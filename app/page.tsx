@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react"
-
 import {
   ArcSidebarPanelContent,
   Sidebar,
@@ -13,13 +11,7 @@ import { HomePageFrame } from "@/components/home-page-frame"
 
 export default function Home() {
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "16.5rem",
-        } as CSSProperties
-      }
-    >
+    <SidebarProvider>
       <div className="flex min-h-svh w-full bg-[#cec7d4]">
         <Sidebar
           className="border-none [&_[data-sidebar=sidebar]]:bg-[#CEC7D4]"

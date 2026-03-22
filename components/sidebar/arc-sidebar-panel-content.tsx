@@ -18,6 +18,7 @@ const iconButtonClass =
   "size-8 rounded-md text-black/85 hover:bg-black/10 hover:text-black";
 
 const repoUrl = "https://github.com/SpyC0der77/arc-ui-skeleton";
+const displayUrl = "arc-ui-skeleton.vercel.app";
 
 export function ArcSidebarPanelContent() {
   const { layoutAnimating, dockFromPeek } = useSidebar();
@@ -62,13 +63,14 @@ export function ArcSidebarPanelContent() {
 
       <Button
         variant="ghost"
+        title={displayUrl}
         className={cn(
-          "h-10 w-full justify-start gap-2 rounded-xl bg-black/10 px-4 text-sm font-semibold text-black shadow-none hover:bg-black/15",
+          "h-10 min-w-0 w-full justify-start gap-2 rounded-xl bg-black/10 px-4 text-sm font-semibold text-black shadow-none hover:bg-black/15",
           motionSafe,
         )}
       >
-        <Lock className="size-3.5" />
-        <span>arc-ui-skeleton.vercel.app</span>
+        <Lock className="size-3.5 shrink-0" aria-hidden />
+        <span className="min-w-0 truncate text-left">{displayUrl}</span>
       </Button>
 
       <Button

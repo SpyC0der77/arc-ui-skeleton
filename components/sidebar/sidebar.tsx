@@ -28,9 +28,20 @@ import { motion, useReducedMotion } from "motion/react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_WIDTH_MIN_PX = 200
+const SIDEBAR_WIDTH_MAX_PX = 560
+const SIDEBAR_WIDTH_DEFAULT_PX = 264
+const SIDEBAR_WIDTH_STORAGE_KEY = "arc_sidebar_width_px"
+const SIDEBAR_RAIL_DRAG_THRESHOLD_PX = 4
+
+function clampSidebarWidthPx(width: number): number {
+  return Math.min(
+    SIDEBAR_WIDTH_MAX_PX,
+    Math.max(SIDEBAR_WIDTH_MIN_PX, Math.round(width)),
+  )
+}
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 const SIDEBAR_DOCK_EASE = [0.22, 1, 0.36, 1] as const
 const SIDEBAR_DOCK_DURATION_S = 0.22
@@ -104,6 +115,12 @@ type SidebarContextProps = {
   layoutAnimating: boolean
   beginSidebarLayoutAnimation: () => void
   endSidebarLayoutAnimation: () => void
+  /** Desktop sidebar width in px; drives `--sidebar-width` on the provider. */
+  sidebarWidthPx: number
+  setSidebarWidthPx: React.Dispatch<React.SetStateAction<number>>
+  /** True while dragging the sidebar rail to resize (desktop). */
+  isResizingSidebar: boolean
+  setIsResizingSidebar: (value: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -112,6 +129,8 @@ type SidebarLayoutVariant = "sidebar" | "floating" | "inset"
 
 const SidebarLayoutVariantContext =
   React.createContext<SidebarLayoutVariant>("sidebar")
+
+const SidebarSideContext = React.createContext<"left" | "right">("left")
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)
@@ -126,6 +145,7 @@ function SidebarProvider({
   defaultOpen = true,
   open: openProp,
   onOpenChange: setOpenProp,
+  sidebarWidthDefaultPx = SIDEBAR_WIDTH_DEFAULT_PX,
   className,
   style,
   children,
@@ -134,6 +154,8 @@ function SidebarProvider({
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Initial desktop sidebar width in px when nothing is stored in localStorage. */
+  sidebarWidthDefaultPx?: number
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
@@ -141,6 +163,34 @@ function SidebarProvider({
   const [peekPanelOpen, setPeekPanelOpen] = React.useState(false)
   const layoutAnimCountRef = React.useRef(0)
   const [layoutAnimating, setLayoutAnimating] = React.useState(false)
+  const [sidebarWidthPx, setSidebarWidthPx] = React.useState(() =>
+    clampSidebarWidthPx(sidebarWidthDefaultPx),
+  )
+  const [isResizingSidebar, setIsResizingSidebar] = React.useState(false)
+
+  const widthHydratedRef = React.useRef(false)
+  React.useLayoutEffect(() => {
+    if (widthHydratedRef.current) return
+    widthHydratedRef.current = true
+    try {
+      const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+      if (raw == null) return
+      const n = Number.parseInt(raw, 10)
+      if (!Number.isFinite(n)) return
+      setSidebarWidthPx(clampSidebarWidthPx(n))
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!isResizingSidebar) return
+    const prev = document.body.style.userSelect
+    document.body.style.userSelect = "none"
+    return () => {
+      document.body.style.userSelect = prev
+    }
+  }, [isResizingSidebar])
 
   const beginSidebarLayoutAnimation = React.useCallback(() => {
     layoutAnimCountRef.current += 1
@@ -225,6 +275,10 @@ function SidebarProvider({
       layoutAnimating,
       beginSidebarLayoutAnimation,
       endSidebarLayoutAnimation,
+      sidebarWidthPx,
+      setSidebarWidthPx,
+      isResizingSidebar,
+      setIsResizingSidebar,
     }),
     [
       state,
@@ -240,6 +294,8 @@ function SidebarProvider({
       layoutAnimating,
       beginSidebarLayoutAnimation,
       endSidebarLayoutAnimation,
+      sidebarWidthPx,
+      isResizingSidebar,
     ]
   )
 
@@ -249,9 +305,9 @@ function SidebarProvider({
         data-slot="sidebar-wrapper"
         style={
           {
-            "--sidebar-width": SIDEBAR_WIDTH,
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
+            "--sidebar-width": `${sidebarWidthPx}px`,
           } as React.CSSProperties
         }
         className={cn(
@@ -288,13 +344,15 @@ function Sidebar({
     dockFromPeek,
     beginSidebarLayoutAnimation,
     endSidebarLayoutAnimation,
+    isResizingSidebar,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
-  const sidebarGapTransition = reduceMotion
-    ? { duration: 0 }
-    : dockFromPeek && open
-      ? { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE }
-      : { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const }
+  const sidebarGapTransition =
+    reduceMotion || isResizingSidebar
+      ? { duration: 0 }
+      : dockFromPeek && open
+        ? { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE }
+        : { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const }
 
   /**
    * Snap x/opacity when docking from peek so we never tween through a half-visible on-screen sidebar.
@@ -302,20 +360,26 @@ function Sidebar({
    */
   const sidebarContainerTransition = reduceMotion
     ? { duration: 0 }
-    : dockFromPeek && open
+    : isResizingSidebar
       ? {
-          x: { duration: 0 },
-          opacity: { duration: 0 },
-          width: { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE },
-        }
-      : {
           x: { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const },
           opacity: { duration: 0 },
-          width: {
-            duration: SIDEBAR_STANDARD_DURATION_S,
-            ease: "linear" as const,
-          },
+          width: { duration: 0 },
         }
+      : dockFromPeek && open
+        ? {
+            x: { duration: 0 },
+            opacity: { duration: 0 },
+            width: { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE },
+          }
+        : {
+            x: { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const },
+            opacity: { duration: 0 },
+            width: {
+              duration: SIDEBAR_STANDARD_DURATION_S,
+              ease: "linear" as const,
+            },
+          }
 
   const {
     onDrag: _onDrag,
@@ -424,9 +488,11 @@ function Sidebar({
           data-slot="sidebar-inner"
           className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
-          <SidebarLayoutVariantContext.Provider value={variant}>
-            {children}
-          </SidebarLayoutVariantContext.Provider>
+          <SidebarSideContext.Provider value={side}>
+            <SidebarLayoutVariantContext.Provider value={variant}>
+              {children}
+            </SidebarLayoutVariantContext.Provider>
+          </SidebarSideContext.Provider>
         </div>
       </motion.div>
     </div>
@@ -463,23 +529,126 @@ function SidebarTrigger({
   )
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
+function SidebarRail({
+  className,
+  onClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  ...props
+}: React.ComponentProps<"button">) {
   const variant = React.useContext(SidebarLayoutVariantContext)
-  const { open, toggleSidebar } = useSidebar()
+  const side = React.useContext(SidebarSideContext)
+  const {
+    open,
+    toggleSidebar,
+    sidebarWidthPx,
+    setSidebarWidthPx,
+    setIsResizingSidebar,
+  } = useSidebar()
+
+  const dragRef = React.useRef<{
+    pointerId: number
+    startX: number
+    startWidth: number
+    dragged: boolean
+  } | null>(null)
+  const suppressClickRef = React.useRef(false)
+  const sidebarWidthPxRef = React.useRef(sidebarWidthPx)
+  React.useEffect(() => {
+    sidebarWidthPxRef.current = sidebarWidthPx
+  }, [sidebarWidthPx])
 
   if (variant === "floating") return null
+
+  function endRailPointer(
+    event: React.PointerEvent<HTMLButtonElement>,
+    dragged: boolean,
+  ) {
+    const session = dragRef.current
+    if (!session || event.pointerId !== session.pointerId) return
+    dragRef.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* ignore */
+    }
+    setIsResizingSidebar(false)
+    if (dragged) {
+      suppressClickRef.current = true
+      try {
+        localStorage.setItem(
+          SIDEBAR_WIDTH_STORAGE_KEY,
+          String(sidebarWidthPxRef.current),
+        )
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   return (
     <button
       type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label={open ? "Close sidebar" : "Open sidebar"}
+      aria-label={
+        open
+          ? "Drag to resize sidebar or click to close"
+          : "Drag to set sidebar width or click to open"
+      }
       tabIndex={-1}
-      onClick={toggleSidebar}
-      title={open ? "Close sidebar" : "Open sidebar"}
+      onClick={(event) => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false
+          event.preventDefault()
+          return
+        }
+        onClick?.(event)
+        toggleSidebar()
+      }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event)
+        if (event.button !== 0) return
+        event.preventDefault()
+        dragRef.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startWidth: sidebarWidthPxRef.current,
+          dragged: false,
+        }
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event)
+        const session = dragRef.current
+        if (!session || event.pointerId !== session.pointerId) return
+        const delta = event.clientX - session.startX
+        const deltaWidth = side === "left" ? delta : -delta
+        const next = clampSidebarWidthPx(session.startWidth + deltaWidth)
+        if (Math.abs(delta) >= SIDEBAR_RAIL_DRAG_THRESHOLD_PX) {
+          if (!session.dragged) {
+            session.dragged = true
+            setIsResizingSidebar(true)
+          }
+          sidebarWidthPxRef.current = next
+          setSidebarWidthPx(next)
+        }
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event)
+        const session = dragRef.current
+        endRailPointer(event, session?.dragged ?? false)
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event)
+        const session = dragRef.current
+        endRailPointer(event, session?.dragged ?? false)
+      }}
+      title={open ? "Drag to resize · click to close" : "Drag to resize · click to open"}
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 cursor-ew-resize transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 touch-none cursor-ew-resize transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
