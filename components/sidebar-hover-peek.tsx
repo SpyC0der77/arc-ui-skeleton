@@ -20,6 +20,8 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
     dockFromPeek,
     endDockFromPeek,
     setPeekPanelOpen,
+    beginSidebarLayoutAnimation,
+    endSidebarLayoutAnimation,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
   const [peek, setPeek] = React.useState(false)
@@ -133,7 +135,9 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
         transition={transition}
         onPointerEnter={handleActivate}
         onPointerLeave={scheduleClose}
+        onAnimationStart={beginSidebarLayoutAnimation}
         onAnimationComplete={() => {
+          endSidebarLayoutAnimation()
           if (!open || !dockFromPeek || dockCompleteRef.current) return
           dockCompleteRef.current = true
           endDockFromPeek()

@@ -100,6 +100,10 @@ type SidebarContextProps = {
   /** Whether the floating peek panel is currently visible (desktop). */
   peekPanelOpen: boolean
   setPeekPanelOpen: (open: boolean) => void
+  /** True while desktop sidebar chrome (peek or docked panel) is moving — freeze button transitions. */
+  layoutAnimating: boolean
+  beginSidebarLayoutAnimation: () => void
+  endSidebarLayoutAnimation: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -130,6 +134,18 @@ function SidebarProvider({
   const [openMobile, setOpenMobile] = React.useState(false)
   const [dockFromPeek, setDockFromPeek] = React.useState(false)
   const [peekPanelOpen, setPeekPanelOpen] = React.useState(false)
+  const layoutAnimCountRef = React.useRef(0)
+  const [layoutAnimating, setLayoutAnimating] = React.useState(false)
+
+  const beginSidebarLayoutAnimation = React.useCallback(() => {
+    layoutAnimCountRef.current += 1
+    if (layoutAnimCountRef.current === 1) setLayoutAnimating(true)
+  }, [])
+
+  const endSidebarLayoutAnimation = React.useCallback(() => {
+    layoutAnimCountRef.current = Math.max(0, layoutAnimCountRef.current - 1)
+    if (layoutAnimCountRef.current === 0) setLayoutAnimating(false)
+  }, [])
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -201,6 +217,9 @@ function SidebarProvider({
       endDockFromPeek,
       peekPanelOpen,
       setPeekPanelOpen,
+      layoutAnimating,
+      beginSidebarLayoutAnimation,
+      endSidebarLayoutAnimation,
     }),
     [
       state,
@@ -213,6 +232,9 @@ function SidebarProvider({
       dockFromPeek,
       endDockFromPeek,
       peekPanelOpen,
+      layoutAnimating,
+      beginSidebarLayoutAnimation,
+      endSidebarLayoutAnimation,
     ]
   )
 
@@ -252,8 +274,16 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile, open, dockFromPeek } =
-    useSidebar()
+  const {
+    isMobile,
+    state,
+    openMobile,
+    setOpenMobile,
+    open,
+    dockFromPeek,
+    beginSidebarLayoutAnimation,
+    endSidebarLayoutAnimation,
+  } = useSidebar()
   const reduceMotion = useReducedMotion()
   const sidebarGapTransition = reduceMotion
     ? { duration: 0 }
@@ -376,6 +406,12 @@ function Sidebar({
           dockFromPeek,
         )}
         transition={sidebarContainerTransition}
+        onAnimationStart={() => {
+          if (!(dockFromPeek && open)) beginSidebarLayoutAnimation()
+        }}
+        onAnimationComplete={() => {
+          if (!(dockFromPeek && open)) endSidebarLayoutAnimation()
+        }}
         {...sidebarContainerProps}
       >
         <div
@@ -395,7 +431,8 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, layoutAnimating, dockFromPeek } = useSidebar()
+  const freezeChromeTransitions = layoutAnimating || dockFromPeek
 
   return (
     <Button
@@ -403,7 +440,10 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon-sm"
-      className={cn(className)}
+      className={cn(
+        className,
+        freezeChromeTransitions && "transition-none",
+      )}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()

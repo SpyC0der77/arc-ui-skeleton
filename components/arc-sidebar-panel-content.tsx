@@ -10,13 +10,17 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
 const iconButtonClass =
   "size-8 rounded-md text-black/85 hover:bg-black/10 hover:text-black"
 
 export function ArcSidebarPanelContent() {
+  const { layoutAnimating, dockFromPeek } = useSidebar()
+  const freezeChrome = layoutAnimating || dockFromPeek
+  const motionSafe = freezeChrome ? "transition-none" : ""
+
   return (
     <>
       <div className="flex items-center justify-between">
@@ -29,7 +33,7 @@ export function ArcSidebarPanelContent() {
           <Button
             variant="ghost"
             size="icon"
-            className={iconButtonClass}
+            className={cn(iconButtonClass, motionSafe)}
             aria-label="Back"
           >
             <ArrowLeft className="size-[18px]" />
@@ -37,7 +41,7 @@ export function ArcSidebarPanelContent() {
           <Button
             variant="ghost"
             size="icon"
-            className={iconButtonClass}
+            className={cn(iconButtonClass, motionSafe)}
             aria-label="Forward"
           >
             <ArrowRight className="size-[18px]" />
@@ -45,7 +49,7 @@ export function ArcSidebarPanelContent() {
           <Button
             variant="ghost"
             size="icon"
-            className={iconButtonClass}
+            className={cn(iconButtonClass, motionSafe)}
             aria-label="Reload"
           >
             <RotateCcw className="size-[18px]" />
@@ -55,7 +59,10 @@ export function ArcSidebarPanelContent() {
 
       <Button
         variant="ghost"
-        className="h-10 w-full justify-start gap-2 rounded-xl bg-black/10 px-4 text-sm font-semibold text-black shadow-none hover:bg-black/15"
+        className={cn(
+          "h-10 w-full justify-start gap-2 rounded-xl bg-black/10 px-4 text-sm font-semibold text-black shadow-none hover:bg-black/15",
+          motionSafe,
+        )}
       >
         <Lock className="size-3.5" />
         <span>yourdomain.com</span>
@@ -63,7 +70,10 @@ export function ArcSidebarPanelContent() {
 
       <Button
         variant="ghost"
-        className="h-auto w-fit justify-start gap-2 px-1 text-base font-normal text-black/45 hover:bg-transparent hover:text-black/65"
+        className={cn(
+          "h-auto w-fit justify-start gap-2 px-1 text-base font-normal text-black/45 hover:bg-transparent hover:text-black/65",
+          motionSafe,
+        )}
       >
         <Plus className="size-[18px]" />
         <span>New Tab</span>
@@ -71,7 +81,10 @@ export function ArcSidebarPanelContent() {
 
       <Button
         variant="secondary"
-        className="h-11 w-full justify-start gap-3 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white"
+        className={cn(
+          "h-11 w-full justify-start gap-3 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white",
+          motionSafe,
+        )}
       >
         <Shapes className="size-[18px] text-black/80" />
         <span>Your Web Project</span>
