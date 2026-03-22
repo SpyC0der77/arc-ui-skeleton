@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
+import { motion, useReducedMotion } from "motion/react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -31,6 +32,59 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_DOCK_EASE = [0.22, 1, 0.36, 1] as const
+const SIDEBAR_DOCK_DURATION_S = 0.22
+const SIDEBAR_STANDARD_DURATION_S = 0.12
+
+function sidebarGapMotionWidth(
+  collapsible: "offcanvas" | "icon" | "none",
+  open: boolean,
+  variant: "sidebar" | "floating" | "inset",
+): string | number {
+  if (collapsible === "offcanvas" && !open) return 0
+  if (collapsible === "icon" && !open) {
+    if (variant === "floating" || variant === "inset") {
+      return "calc(var(--sidebar-width-icon) + 1rem)"
+    }
+    return "var(--sidebar-width-icon)"
+  }
+  return "var(--sidebar-width)"
+}
+
+function sidebarContainerMotion(
+  side: "left" | "right",
+  collapsible: "offcanvas" | "icon" | "none",
+  open: boolean,
+  variant: "sidebar" | "floating" | "inset",
+  dockFromPeek: boolean,
+): { x: string | number; width: string; opacity: number } {
+  const full = "var(--sidebar-width)"
+  const iconWidth =
+    variant === "floating" || variant === "inset"
+      ? "calc(var(--sidebar-width-icon) + 1rem + 2px)"
+      : "var(--sidebar-width-icon)"
+
+  if (collapsible === "offcanvas") {
+    if (!open) {
+      return {
+        x: side === "left" ? "-100%" : "100%",
+        width: full,
+        opacity: 1,
+      }
+    }
+    return {
+      x: 0,
+      width: full,
+      opacity: dockFromPeek ? 0 : 1,
+    }
+  }
+
+  if (collapsible === "icon") {
+    return { x: 0, width: open ? full : iconWidth, opacity: 1 }
+  }
+
+  return { x: 0, width: full, opacity: 1 }
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -40,6 +94,12 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  /** True while the hover peek is morphing into the docked sidebar (desktop). */
+  dockFromPeek: boolean
+  endDockFromPeek: () => void
+  /** Whether the floating peek panel is currently visible (desktop). */
+  peekPanelOpen: boolean
+  setPeekPanelOpen: (open: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -68,6 +128,8 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [dockFromPeek, setDockFromPeek] = React.useState(false)
+  const [peekPanelOpen, setPeekPanelOpen] = React.useState(false)
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -88,10 +150,23 @@ function SidebarProvider({
     [setOpenProp, open]
   )
 
+  const endDockFromPeek = React.useCallback(() => {
+    setDockFromPeek(false)
+  }, [])
+
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
-  }, [isMobile, setOpen, setOpenMobile])
+    if (isMobile) {
+      setOpenMobile((o) => !o)
+      return
+    }
+    if (open) {
+      setDockFromPeek(false)
+    } else {
+      setDockFromPeek(peekPanelOpen)
+    }
+    setOpen((o) => !o)
+  }, [isMobile, open, peekPanelOpen, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -122,8 +197,23 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      dockFromPeek,
+      endDockFromPeek,
+      peekPanelOpen,
+      setPeekPanelOpen,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      dockFromPeek,
+      endDockFromPeek,
+      peekPanelOpen,
+    ]
   )
 
   return (
@@ -162,7 +252,44 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, open, dockFromPeek } =
+    useSidebar()
+  const reduceMotion = useReducedMotion()
+  const sidebarGapTransition = reduceMotion
+    ? { duration: 0 }
+    : dockFromPeek && open
+      ? { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE }
+      : { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const }
+
+  /**
+   * Snap x/opacity when docking from peek so we never tween through a half-visible on-screen sidebar.
+   * Opacity always snaps (duration 0) so the handoff after peek unmounts never fades over the page gap.
+   */
+  const sidebarContainerTransition = reduceMotion
+    ? { duration: 0 }
+    : dockFromPeek && open
+      ? {
+          x: { duration: 0 },
+          opacity: { duration: 0 },
+          width: { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE },
+        }
+      : {
+          x: { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const },
+          opacity: { duration: 0 },
+          width: {
+            duration: SIDEBAR_STANDARD_DURATION_S,
+            ease: "linear" as const,
+          },
+        }
+
+  const {
+    onDrag: _onDrag,
+    onDragStart: _onDragStart,
+    onDragEnd: _onDragEnd,
+    onAnimationStart: _onAnimationStart,
+    onAnimationEnd: _onAnimationEnd,
+    ...sidebarContainerProps
+  } = props
 
   if (collapsible === "none") {
     return (
@@ -215,29 +342,41 @@ function Sidebar({
       data-slot="sidebar"
     >
       {/* This is what handles the sidebar gap on desktop */}
-      <div
+      <motion.div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
+          "relative overflow-hidden bg-transparent",
           "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
         )}
+        initial={false}
+        animate={{ width: sidebarGapMotionWidth(collapsible, open, variant) }}
+        transition={sidebarGapTransition}
       />
-      <div
+      <motion.div
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
-          // Adjust the padding for floating and inset variants.
+          "fixed inset-y-0 z-10 hidden h-svh md:flex",
+          open && dockFromPeek && "pointer-events-none",
+          side === "left" ? "left-0" : "right-0",
           variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className
+            ? "p-2"
+            : cn(
+                side === "left" && "border-r",
+                side === "right" && "border-l",
+              ),
+          className,
         )}
-        {...props}
+        initial={false}
+        animate={sidebarContainerMotion(
+          side,
+          collapsible,
+          open,
+          variant,
+          dockFromPeek,
+        )}
+        transition={sidebarContainerTransition}
+        {...sidebarContainerProps}
       >
         <div
           data-sidebar="sidebar"
@@ -246,7 +385,7 @@ function Sidebar({
         >
           {children}
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
