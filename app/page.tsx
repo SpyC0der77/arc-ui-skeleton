@@ -1,14 +1,14 @@
 import type { CSSProperties } from "react"
 
 import {
+  ArcSidebarPanelContent,
   Sidebar,
   SidebarContent,
+  SidebarHoverPeek,
   SidebarInset,
   SidebarProvider,
-} from "@/components/ui/sidebar"
-import { ArcSidebarPanelContent } from "@/components/arc-sidebar-panel-content"
+} from "@/components/sidebar"
 import { HomePageFrame } from "@/components/home-page-frame"
-import { SidebarHoverPeek } from "@/components/sidebar-hover-peek"
 
 export default function Home() {
   return (

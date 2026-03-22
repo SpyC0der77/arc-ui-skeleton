@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react"
 
-import { useSidebar } from "@/components/ui/sidebar"
+import { useSidebar } from "@/components/sidebar"
 import { cn } from "@/lib/utils"
 
 const dockEase = [0.22, 1, 0.36, 1] as const

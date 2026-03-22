@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarTrigger, useSidebar } from "./sidebar"
 import { cn } from "@/lib/utils"
 
 const iconButtonClass =

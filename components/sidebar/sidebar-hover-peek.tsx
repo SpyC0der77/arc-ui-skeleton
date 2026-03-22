@@ -3,7 +3,7 @@
 import * as React from "react"
 import { motion, useReducedMotion } from "motion/react"
 
-import { useSidebar } from "@/components/ui/sidebar"
+import { useSidebar } from "./sidebar"
 import { cn } from "@/lib/utils"
 
 interface SidebarHoverPeekProps {
