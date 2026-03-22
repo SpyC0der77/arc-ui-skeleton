@@ -123,10 +123,10 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
                 boxShadow: "none",
               }
             : {
-                left: "1rem",
+                left: "0.5rem",
                 top: "0.5rem",
                 bottom: "0.5rem",
-                x: peek ? 0 : "calc(-100% - 1.5rem)",
+                x: peek ? 0 : "calc(-100% - 0.5rem)",
                 opacity: peek ? 1 : 0,
                 borderRadius: 12,
                 boxShadow: "0 12px 40px rgba(68,55,80,0.28)",
