@@ -1,25 +1,28 @@
-"use client"
+"use client";
 
 import {
   ArrowLeft,
   ArrowRight,
+  Github,
   Lock,
   Plus,
   RotateCcw,
   Shapes,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { SidebarTrigger, useSidebar } from "./sidebar"
-import { cn } from "@/lib/utils"
+import { Button, buttonVariants } from "@/components/ui/button";
+import { SidebarTrigger, useSidebar } from "./sidebar";
+import { cn } from "@/lib/utils";
 
 const iconButtonClass =
-  "size-8 rounded-md text-black/85 hover:bg-black/10 hover:text-black"
+  "size-8 rounded-md text-black/85 hover:bg-black/10 hover:text-black";
+
+const repoUrl = "https://github.com/SpyC0der77/arc-ui-skeleton";
 
 export function ArcSidebarPanelContent() {
-  const { layoutAnimating, dockFromPeek } = useSidebar()
-  const freezeChrome = layoutAnimating || dockFromPeek
-  const motionSafe = freezeChrome ? "transition-none" : ""
+  const { layoutAnimating, dockFromPeek } = useSidebar();
+  const freezeChrome = layoutAnimating || dockFromPeek;
+  const motionSafe = freezeChrome ? "transition-none" : "";
 
   return (
     <>
@@ -65,7 +68,7 @@ export function ArcSidebarPanelContent() {
         )}
       >
         <Lock className="size-3.5" />
-        <span>yourdomain.com</span>
+        <span>arc-ui-skeleton.vercel.app</span>
       </Button>
 
       <Button
@@ -79,16 +82,31 @@ export function ArcSidebarPanelContent() {
         <span>New Tab</span>
       </Button>
 
-      <Button
-        variant="secondary"
-        className={cn(
-          "h-11 w-full justify-start gap-3 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white",
-          motionSafe,
-        )}
-      >
-        <Shapes className="size-[18px] text-black/80" />
-        <span>Your Web Project</span>
-      </Button>
+      <div className="flex flex-col gap-1">
+        <Button
+          variant="secondary"
+          className={cn(
+            "h-11 w-full justify-start gap-1.5 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white",
+            motionSafe,
+          )}
+        >
+          <Shapes className="size-[18px] text-black/80" />
+          <span className="truncate max-w-full">Arc Browser UI Skeleton</span>
+        </Button>
+        <a
+          href={repoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "h-11 w-full justify-start gap-1.5 rounded-xl border-none bg-[#CEC7D4] px-3.5 text-base font-medium text-black/50 shadow-none hover:bg-[#e3dfea] hover:no-underline",
+            motionSafe,
+          )}
+        >
+          <Github className="size-[18px] text-black/60" aria-hidden />
+          <span className="truncate max-w-full">View on GitHub</span>
+        </a>
+      </div>
     </>
-  )
+  );
 }
