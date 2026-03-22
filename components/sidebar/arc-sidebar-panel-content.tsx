@@ -100,8 +100,6 @@ export function ArcSidebarPanelContent() {
             "h-11 w-full justify-start gap-1.5 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white",
             motionSafe,
           )}
-          onClick={openUrlCommand}
-          aria-label="Open address bar"
         >
           <Shapes className="size-[18px] text-black/80" />
           <span className="truncate max-w-full">Arc Browser UI Skeleton</span>
