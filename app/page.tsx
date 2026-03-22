@@ -26,7 +26,7 @@ export default function Home() {
           </Sidebar>
 
           <SidebarInset
-            className="bg-transparent p-1.5 md:p-2.5 md:peer-data-[state=collapsed]:p-0 md:peer-data-[state=collapsed]:[&_[data-slot=page-frame]]:rounded-none md:peer-data-[state=collapsed]:[&_[data-slot=page-frame]]:shadow-none"
+            className="bg-transparent px-1.5 py-1.5 md:py-2.5 md:pr-2.5 md:pl-0 md:peer-data-[state=collapsed]:p-0 md:peer-data-[state=collapsed]:[&_[data-slot=page-frame]]:rounded-none md:peer-data-[state=collapsed]:[&_[data-slot=page-frame]]:shadow-none"
           >
             <HomePageFrame />
           </SidebarInset>

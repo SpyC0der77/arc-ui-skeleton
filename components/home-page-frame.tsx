@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { motion, useReducedMotion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react";
 
-import { useSidebar } from "@/components/sidebar"
-import { cn } from "@/lib/utils"
+import { useSidebar } from "@/components/sidebar";
+import { cn } from "@/lib/utils";
 
-const dockEase = [0.22, 1, 0.36, 1] as const
+const dockEase = [0.22, 1, 0.36, 1] as const;
 
 interface HomePageFrameProps {
-  className?: string
+  className?: string;
 }
 
 export function HomePageFrame({ className }: HomePageFrameProps) {
-  const { open, isMobile } = useSidebar()
-  const reduceMotion = useReducedMotion()
+  const { open, isMobile } = useSidebar();
+  const reduceMotion = useReducedMotion();
 
   /** Keep timing stable while `dockFromPeek` toggles off so scale does not re-interpolate at the same value. */
   const transition = reduceMotion
     ? { duration: 0 }
     : open && !isMobile
       ? { duration: 0.22, ease: dockEase }
-      : { duration: 0.12, ease: "linear" as const }
+      : { duration: 0.12, ease: "linear" as const };
 
-  const scale = open && !isMobile ? 0.985 : 1
+  const scale = open && !isMobile ? 0.985 : 1;
 
   return (
     <motion.div
@@ -36,5 +36,5 @@ export function HomePageFrame({ className }: HomePageFrameProps) {
       transition={transition}
       style={{ transformOrigin: "62% 50%" }}
     />
-  )
+  );
 }
