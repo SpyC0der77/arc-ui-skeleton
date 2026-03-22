@@ -7,6 +7,7 @@ import {
   SidebarHoverPeek,
   SidebarInset,
   SidebarProvider,
+  SidebarRail,
 } from "@/components/sidebar"
 import { HomePageFrame } from "@/components/home-page-frame"
 
@@ -24,6 +25,7 @@ export default function Home() {
           className="border-none [&_[data-sidebar=sidebar]]:bg-[#CEC7D4]"
           collapsible="offcanvas"
         >
+          <SidebarRail />
           <SidebarContent className="gap-7 px-3 py-4">
             <ArcSidebarPanelContent />
           </SidebarContent>
