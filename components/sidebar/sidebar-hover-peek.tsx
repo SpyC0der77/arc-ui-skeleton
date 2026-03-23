@@ -100,10 +100,10 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
         aria-label={docking ? "Docking sidebar" : "Sidebar preview"}
         aria-hidden={!showFloatingPanel}
         className={cn(
-          "fixed z-45 flex max-h-[calc(100vh-1rem)] max-md:hidden flex-col overflow-hidden border border-black/10 bg-[#CEC7D4] will-change-transform",
+          "fixed z-45 flex max-h-[calc(100vh-1rem)] max-md:hidden flex-col overflow-hidden bg-[#CEC7D4] will-change-transform",
           docking
-            ? "shadow-none"
-            : "top-2 bottom-2 rounded-xl shadow-[0_12px_40px_rgba(68,55,80,0.28)]",
+            ? "border-0 shadow-none"
+            : "top-2 bottom-2 rounded-xl border border-black/10 shadow-[0_12px_40px_rgba(68,55,80,0.28)]",
           className,
         )}
         style={{
