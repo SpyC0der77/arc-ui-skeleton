@@ -82,6 +82,7 @@
   --sidebar-accent-foreground: #141414;
   --sidebar-border: #b7adbf;
   --sidebar-ring: #8d8398;
+  --arc-sidebar-width: 264px;
 }
 
 .dark {
