@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 
 const dockEase = [0.22, 1, 0.36, 1] as const;
 
+/** Half the docked scale shrink (vs 0.985) so the inset beside the sidebar matches halved main-side padding. */
+const DOCKED_PAGE_SCALE = 1 - (1 - 0.985) / 2;
+
 interface HomePageFrameProps {
   className?: string;
 }
@@ -22,7 +25,7 @@ export function HomePageFrame({ className }: HomePageFrameProps) {
       ? { duration: 0.22, ease: dockEase }
       : { duration: 0.12, ease: "linear" as const };
 
-  const scale = open && !isMobile ? 0.985 : 1;
+  const scale = open && !isMobile ? DOCKED_PAGE_SCALE : 1;
 
   return (
     <motion.div

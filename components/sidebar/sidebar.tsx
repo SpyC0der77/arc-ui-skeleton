@@ -6,6 +6,12 @@ import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  SIDEBAR_WIDTH_CSS_VAR,
+  SIDEBAR_WIDTH_DEFAULT_PX,
+  SIDEBAR_WIDTH_STORAGE_KEY,
+  clampSidebarWidthPx,
+} from "@/lib/sidebar-width-storage"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,18 +36,7 @@ const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_WIDTH_MIN_PX = 200
-const SIDEBAR_WIDTH_MAX_PX = 560
-const SIDEBAR_WIDTH_DEFAULT_PX = 264
-const SIDEBAR_WIDTH_STORAGE_KEY = "arc_sidebar_width_px"
 const SIDEBAR_RAIL_DRAG_THRESHOLD_PX = 4
-
-function clampSidebarWidthPx(width: number): number {
-  return Math.min(
-    SIDEBAR_WIDTH_MAX_PX,
-    Math.max(SIDEBAR_WIDTH_MIN_PX, Math.round(width)),
-  )
-}
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 const SIDEBAR_DOCK_EASE = [0.22, 1, 0.36, 1] as const
 const SIDEBAR_DOCK_DURATION_S = 0.22
@@ -170,18 +165,32 @@ function SidebarProvider({
 
   const widthHydratedRef = React.useRef(false)
   React.useLayoutEffect(() => {
-    if (widthHydratedRef.current) return
-    widthHydratedRef.current = true
-    try {
-      const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
-      if (raw == null) return
-      const n = Number.parseInt(raw, 10)
-      if (!Number.isFinite(n)) return
-      setSidebarWidthPx(clampSidebarWidthPx(n))
-    } catch {
-      /* ignore */
+    let widthToApply = sidebarWidthPx
+
+    if (!widthHydratedRef.current) {
+      widthHydratedRef.current = true
+      try {
+        const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+        if (raw != null) {
+          const n = Number.parseInt(raw, 10)
+          if (Number.isFinite(n)) {
+            const fromStorage = clampSidebarWidthPx(n)
+            widthToApply = fromStorage
+            if (fromStorage !== sidebarWidthPx) {
+              setSidebarWidthPx(fromStorage)
+            }
+          }
+        }
+      } catch {
+        /* ignore */
+      }
     }
-  }, [])
+
+    document.documentElement.style.setProperty(
+      SIDEBAR_WIDTH_CSS_VAR,
+      `${widthToApply}px`,
+    )
+  }, [sidebarWidthPx])
 
   React.useEffect(() => {
     if (!isResizingSidebar) return
@@ -307,7 +316,7 @@ function SidebarProvider({
           {
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
-            "--sidebar-width": `${sidebarWidthPx}px`,
+            "--sidebar-width": `var(${SIDEBAR_WIDTH_CSS_VAR})`,
           } as React.CSSProperties
         }
         className={cn(
