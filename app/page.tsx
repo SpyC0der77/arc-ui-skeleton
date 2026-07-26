@@ -3,6 +3,7 @@ import {
   ArcSidebarPanelContent,
   Sidebar,
   SidebarContent,
+  SidebarDownloadsRail,
   SidebarHoverPeek,
   SidebarInset,
   SidebarProvider,
@@ -15,6 +16,8 @@ export default function Home() {
     <SidebarProvider>
       <ArcUrlCommandProvider>
         <div className="flex min-h-svh w-full bg-[#cec7d4]">
+          <SidebarDownloadsRail />
+
           <Sidebar
             className="border-none [&_[data-sidebar=sidebar]]:bg-[#CEC7D4]"
             collapsible="offcanvas"

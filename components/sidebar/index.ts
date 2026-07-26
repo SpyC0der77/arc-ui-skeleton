@@ -1,3 +1,5 @@
 export * from "./sidebar"
 export { ArcSidebarPanelContent } from "./arc-sidebar-panel-content"
+export { SidebarDownloadsButton } from "./sidebar-downloads-button"
+export { SidebarDownloadsRail } from "./sidebar-downloads-rail"
 export { SidebarHoverPeek } from "./sidebar-hover-peek"

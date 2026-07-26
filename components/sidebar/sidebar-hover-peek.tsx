@@ -22,6 +22,7 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
     setPeekPanelOpen,
     beginSidebarLayoutAnimation,
     endSidebarLayoutAnimation,
+    leftRailWidthPx,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
   const [peek, setPeek] = React.useState(false)
@@ -90,7 +91,8 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
       {!open && (
         <div
           aria-hidden
-          className="pointer-events-auto fixed top-0 bottom-0 left-0 z-40 w-4 cursor-default max-md:hidden"
+          className="pointer-events-auto fixed top-0 bottom-0 z-40 w-4 cursor-default max-md:hidden"
+          style={{ left: leftRailWidthPx }}
           onPointerEnter={handleActivate}
           onPointerLeave={scheduleClose}
         />
@@ -114,7 +116,7 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
         animate={
           docking
             ? {
-                left: 0,
+                left: leftRailWidthPx,
                 top: 0,
                 bottom: 0,
                 x: 0,
@@ -123,7 +125,7 @@ export function SidebarHoverPeek({ children, className }: SidebarHoverPeekProps)
                 boxShadow: "none",
               }
             : {
-                left: "0.5rem",
+                left: leftRailWidthPx + 8,
                 top: "0.5rem",
                 bottom: "0.5rem",
                 x: peek ? 0 : "calc(-100% - 0.5rem)",

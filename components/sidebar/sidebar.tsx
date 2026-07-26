@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
+import { NudgeIcon, playNudgeOnPress, type NudgeIconHandle } from "./nudge-icon"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -41,6 +42,12 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 const SIDEBAR_DOCK_EASE = [0.22, 1, 0.36, 1] as const
 const SIDEBAR_DOCK_DURATION_S = 0.22
 const SIDEBAR_STANDARD_DURATION_S = 0.12
+/** Narrow rail docked to the left of the sidebar — a third of the default sidebar width. */
+const SIDEBAR_LEFT_RAIL_WIDTH_PX = Math.round(SIDEBAR_WIDTH_DEFAULT_PX / 3)
+const SIDEBAR_LEFT_RAIL_TRANSITION = {
+  duration: SIDEBAR_DOCK_DURATION_S,
+  ease: SIDEBAR_DOCK_EASE,
+} as const
 
 function sidebarGapMotionWidth(
   collapsible: "offcanvas" | "icon" | "none",
@@ -116,6 +123,12 @@ type SidebarContextProps = {
   /** True while dragging the sidebar rail to resize (desktop). */
   isResizingSidebar: boolean
   setIsResizingSidebar: (value: boolean) => void
+  /** Whether the narrow downloads rail to the left of the sidebar is open (desktop). */
+  downloadsRailOpen: boolean
+  setDownloadsRailOpen: (open: boolean) => void
+  toggleDownloadsRail: () => void
+  /** Horizontal offset the sidebar chrome must shift by to sit right of the narrow rail. */
+  leftRailWidthPx: number
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -162,6 +175,8 @@ function SidebarProvider({
     clampSidebarWidthPx(sidebarWidthDefaultPx),
   )
   const [isResizingSidebar, setIsResizingSidebar] = React.useState(false)
+  const [downloadsRailOpen, setDownloadsRailOpen] = React.useState(false)
+  const railPendingRef = React.useRef(false)
 
   const widthHydratedRef = React.useRef(false)
   React.useLayoutEffect(() => {
@@ -234,6 +249,9 @@ function SidebarProvider({
     setDockFromPeek(false)
   }, [])
 
+  const leftRailWidthPx =
+    downloadsRailOpen && !isMobile ? SIDEBAR_LEFT_RAIL_WIDTH_PX : 0
+
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -247,6 +265,34 @@ function SidebarProvider({
     }
     setOpen((o) => !o)
   }, [isMobile, open, peekPanelOpen, setOpen, setOpenMobile])
+
+  /**
+   * Toggling the rail from an undocked sidebar docks first, then opens the rail once the
+   * dock (and its peek handoff) settles, so the two shifts never animate against each other.
+   */
+  const toggleDownloadsRail = React.useCallback(() => {
+    if (open || isMobile) {
+      railPendingRef.current = false
+      setDownloadsRailOpen((o) => !o)
+      return
+    }
+    railPendingRef.current = true
+    toggleSidebar()
+  }, [isMobile, open, toggleSidebar])
+
+  React.useEffect(() => {
+    if (!railPendingRef.current) return
+    if (!open || dockFromPeek) return
+    railPendingRef.current = false
+    setDownloadsRailOpen(true)
+  }, [open, dockFromPeek])
+
+  /** The rail is part of the docked chrome, so undocking takes it away with the sidebar. */
+  React.useEffect(() => {
+    if (open) return
+    railPendingRef.current = false
+    setDownloadsRailOpen(false)
+  }, [open])
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -288,6 +334,10 @@ function SidebarProvider({
       setSidebarWidthPx,
       isResizingSidebar,
       setIsResizingSidebar,
+      downloadsRailOpen,
+      setDownloadsRailOpen,
+      toggleDownloadsRail,
+      leftRailWidthPx,
     }),
     [
       state,
@@ -305,6 +355,9 @@ function SidebarProvider({
       endSidebarLayoutAnimation,
       sidebarWidthPx,
       isResizingSidebar,
+      downloadsRailOpen,
+      toggleDownloadsRail,
+      leftRailWidthPx,
     ]
   )
 
@@ -354,6 +407,7 @@ function Sidebar({
     beginSidebarLayoutAnimation,
     endSidebarLayoutAnimation,
     isResizingSidebar,
+    leftRailWidthPx,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
   const sidebarGapTransition =
@@ -374,12 +428,14 @@ function Sidebar({
           x: { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const },
           opacity: { duration: 0 },
           width: { duration: 0 },
+          left: SIDEBAR_LEFT_RAIL_TRANSITION,
         }
       : dockFromPeek && open
         ? {
             x: { duration: 0 },
             opacity: { duration: 0 },
             width: { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE },
+            left: SIDEBAR_LEFT_RAIL_TRANSITION,
           }
         : {
             x: { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const },
@@ -388,6 +444,7 @@ function Sidebar({
               duration: SIDEBAR_STANDARD_DURATION_S,
               ease: "linear" as const,
             },
+            left: SIDEBAR_LEFT_RAIL_TRANSITION,
           }
 
   const {
@@ -476,13 +533,16 @@ function Sidebar({
           className,
         )}
         initial={false}
-        animate={sidebarContainerMotion(
-          side,
-          collapsible,
-          open,
-          variant,
-          dockFromPeek,
-        )}
+        animate={{
+          ...sidebarContainerMotion(
+            side,
+            collapsible,
+            open,
+            variant,
+            dockFromPeek,
+          ),
+          ...(side === "left" ? { left: leftRailWidthPx } : null),
+        }}
         transition={sidebarContainerTransition}
         onAnimationStart={() => {
           if (!(dockFromPeek && open)) beginSidebarLayoutAnimation()
@@ -511,10 +571,12 @@ function Sidebar({
 function SidebarTrigger({
   className,
   onClick,
+  onPointerDown,
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar, layoutAnimating, dockFromPeek } = useSidebar()
   const freezeChromeTransitions = layoutAnimating || dockFromPeek
+  const iconRef = React.useRef<NudgeIconHandle>(null)
 
   return (
     <Button
@@ -526,13 +588,20 @@ function SidebarTrigger({
         className,
         freezeChromeTransitions && "transition-none",
       )}
+      onPointerDown={playNudgeOnPress(iconRef, onPointerDown)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      <NudgeIcon
+        ref={iconRef}
+        preset="panel"
+        disabled={freezeChromeTransitions}
+      >
+        <PanelLeftIcon />
+      </NudgeIcon>
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -1062,6 +1131,7 @@ function SidebarMenuSubButton({
 }
 
 export {
+  SIDEBAR_LEFT_RAIL_WIDTH_PX,
   Sidebar,
   SidebarContent,
   SidebarFooter,
