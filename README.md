@@ -2,7 +2,18 @@
 
 An Arc-inspired browser interface built as a Next.js web app, with a collapsible sidebar, page frame, and URL command menu.
 
+## Demo
+
+![Opening the address menu, choosing Home, and collapsing the sidebar.](docs/images/demo.gif)
+
+Opening the address menu, choosing Home, and collapsing the sidebar.
+
+<details>
+<summary>Screenshot</summary>
+
 ![Arc interface and URL command menu](docs/images/app.png)
+
+</details>
 
 [Live demo](https://arc-ui-skeleton.vercel.app)
 
