@@ -1,0 +1,26 @@
+{
+  "name": "arc-ui-skeleton",
+  "url": "https://arc-ui-skeleton.vercel.app",
+  "width": 960,
+  "height": 600,
+  "fps": 18,
+  "duration": 22.72222222222222,
+  "events": [
+    {
+      "time": 0.67,
+      "text": "Sidebar and command menu"
+    },
+    {
+      "time": 7.17,
+      "text": "Downloads rail"
+    },
+    {
+      "time": 12.67,
+      "text": "Collapsed sidebar and hover peek"
+    },
+    {
+      "time": 20.61,
+      "verified": "Arc interface remains rendered after sidebar interactions"
+    }
+  ]
+}
