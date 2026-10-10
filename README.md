@@ -6,8 +6,6 @@ An Arc-inspired browser interface built as a Next.js web app, with a collapsible
 
 ![Opening the address menu, choosing Home, and collapsing the sidebar.](docs/images/demo.gif)
 
-Opening the address menu, choosing Home, and collapsing the sidebar.
-
 <details>
 <summary>Screenshot</summary>
 
