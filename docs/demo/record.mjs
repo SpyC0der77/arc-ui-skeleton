@@ -1,10 +1,44 @@
 import {record} from './studio.mjs';
 import {fileURLToPath} from 'node:url';
-const tour={async tour(f){
-  const p=f.page,button=name=>p.getByRole('button',{name,exact:true});
-  f.mark('Sidebar and command menu');await f.move(150,220,1);await f.click(button('Open address bar'));await f.camera(720,420,1.35);await f.type(p.getByRole('combobox',{name:'Search or enter URL'}),'Home');await f.click(p.getByRole('option').filter({hasText:'Home'}));await f.camera();
-  f.mark('Downloads rail');await f.click(button('Downloads'));await f.camera(250,450,1.25);await f.move(35,230,1);await f.beat(.6);await f.camera();await f.click(button('Close downloads'));
-  f.mark('Collapsed sidebar and hover peek');await f.click(button('Close sidebar'));await f.move(800,350,1);await f.move(3,350,1.2);await f.beat(.6);await f.camera(330,450,1.25);await f.move(190,218,.8);await f.beat(.5);await f.move(850,450,1.1);await f.camera();
-  await f.assert(()=>p.locator('body').innerText().then(t=>t.includes('Arc Browser UI Skeleton')||t.includes('Search or enter URL')),'Arc interface remains rendered after sidebar interactions');
- }}.tour;
-await record({name:"arc-ui-skeleton",url:"https://arc-ui-skeleton.vercel.app",tour,output:fileURLToPath(new URL('../images/',import.meta.url))});
+// Reveal the real hover preview before the first captured frame.
+async function reveal(page){
+ await page.mouse.move(3,180);await page.waitForTimeout(300);
+ await page.mouse.move(100,180);await page.waitForTimeout(250);
+}
+async function prepare(page){
+ await page.getByRole('button',{name:'Close sidebar',exact:true}).click();
+ await reveal(page);
+}
+async function tour(f){
+ const p=f.page,preview=p.getByRole('complementary',{name:'Sidebar preview',exact:true});
+ const floatingButton=name=>preview.getByRole('button',{name,exact:true});
+ const visiblePreview=()=>preview.getAttribute('aria-hidden').then(value=>value==='false');
+ f.mark('Floating sidebar controls');
+ await f.assert(visiblePreview,'The floating sidebar is open');
+ await f.move(170,220,.8);await f.beat(.4);
+ await f.click(floatingButton('Back'));await f.click(floatingButton('Forward'));
+ f.mark('Address palette');
+ await f.click(floatingButton('Open address bar'));
+ await f.camera(512,350,1.35,.65);
+ await f.type(p.getByRole('combobox',{name:'Search or enter URL'}),'Home');
+ await p.keyboard.press('ArrowDown');await f.beat(.4);
+ await p.keyboard.press('ArrowUp');await f.beat(.45);
+ await p.keyboard.press('Escape');await p.waitForTimeout(350);
+ // Cut back to the revealed panel without filming an empty-page transit.
+ await reveal(p);await f.cutPointer(100,180);await f.assert(visiblePreview,'The floating sidebar is revealed after closing the palette');f.cutCamera(220,460,1.75);
+ f.mark('Downloads popup in the floating sidebar');
+ await f.hover(floatingButton('Downloads'),.9);
+ const menu=p.getByRole('menu',{name:'Downloads',exact:true});
+ await f.assert(()=>menu.isVisible(),'Downloads popup is visible');
+ await f.hover(menu.getByRole('menuitem').filter({hasText:'sidebar-spec.pdf'}),.65);
+ await f.hover(menu.getByRole('menuitem').filter({hasText:'boost-wallpaper.png'}),.65);
+ await f.assert(visiblePreview,'The sidebar stays open while using its downloads popup');
+ f.mark('Dock the floating sidebar');
+ await f.move(110,300,.65);await f.camera(220,170,2.1,.8);
+ await f.move(100,120,.6);await f.assert(visiblePreview,'The floating panel remains visible');
+ await f.click(floatingButton('Close sidebar'));await f.beat(.5);
+ await f.assert(()=>p.getByRole('complementary',{name:'Sidebar preview',exact:true}).count().then(n=>n===0),'The floating sidebar docks into the page');
+}
+await record({name:'arc-ui-skeleton',url:'https://arc-ui-skeleton.vercel.app',tour,prepare,
+ initialCamera:{x:220,y:170,z:2.1},initialPointer:{x:100,y:180},outro:false,
+ output:fileURLToPath(new URL('../images/',import.meta.url))});

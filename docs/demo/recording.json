@@ -4,23 +4,47 @@
   "width": 960,
   "height": 600,
   "fps": 18,
-  "duration": 22.72222222222222,
+  "duration": 16.88888888888889,
   "events": [
     {
       "time": 0.67,
-      "text": "Sidebar and command menu"
+      "text": "Floating sidebar controls"
     },
     {
-      "time": 7.17,
-      "text": "Downloads rail"
+      "time": 0.67,
+      "verified": "The floating sidebar is open"
     },
     {
-      "time": 12.67,
-      "text": "Collapsed sidebar and hover peek"
+      "time": 4.17,
+      "text": "Address palette"
     },
     {
-      "time": 20.61,
-      "verified": "Arc interface remains rendered after sidebar interactions"
+      "time": 8.44,
+      "verified": "The floating sidebar is revealed after closing the palette"
+    },
+    {
+      "time": 8.44,
+      "text": "Downloads popup in the floating sidebar"
+    },
+    {
+      "time": 9.94,
+      "verified": "Downloads popup is visible"
+    },
+    {
+      "time": 12.5,
+      "verified": "The sidebar stays open while using its downloads popup"
+    },
+    {
+      "time": 12.5,
+      "text": "Dock the floating sidebar"
+    },
+    {
+      "time": 14.56,
+      "verified": "The floating panel remains visible"
+    },
+    {
+      "time": 16.22,
+      "verified": "The floating sidebar docks into the page"
     }
   ]
 }
