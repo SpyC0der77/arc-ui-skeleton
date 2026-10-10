@@ -4,47 +4,47 @@
   "width": 960,
   "height": 600,
   "fps": 18,
-  "duration": 16.88888888888889,
+  "duration": 18.555555555555557,
   "events": [
     {
       "time": 0.67,
-      "text": "Floating sidebar controls"
+      "text": "Docked sidebar and address palette"
     },
     {
       "time": 0.67,
-      "verified": "The floating sidebar is open"
+      "verified": "The sidebar starts docked"
     },
     {
-      "time": 4.17,
-      "text": "Address palette"
+      "time": 5.78,
+      "text": "Undock and reveal the floating sidebar"
     },
     {
-      "time": 8.44,
-      "verified": "The floating sidebar is revealed after closing the palette"
+      "time": 8.89,
+      "verified": "The undocked floating sidebar is visible"
     },
     {
-      "time": 8.44,
+      "time": 9.67,
       "text": "Downloads popup in the floating sidebar"
     },
     {
-      "time": 9.94,
+      "time": 11.17,
       "verified": "Downloads popup is visible"
     },
     {
-      "time": 12.5,
+      "time": 13.72,
       "verified": "The sidebar stays open while using its downloads popup"
     },
     {
-      "time": 12.5,
+      "time": 13.72,
       "text": "Dock the floating sidebar"
     },
     {
-      "time": 14.56,
+      "time": 15.78,
       "verified": "The floating panel remains visible"
     },
     {
-      "time": 16.22,
-      "verified": "The floating sidebar docks into the page"
+      "time": 17.89,
+      "verified": "The floating sidebar finishes docking into the page"
     }
   ]
 }

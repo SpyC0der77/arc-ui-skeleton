@@ -18,9 +18,11 @@ export async function record({name,url,tour,output,prepare,initialCamera={x:W/2,
  const page=await browser.newPage({viewport:{width:W,height:H},deviceScaleFactor:1});
  page.setDefaultTimeout(12000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.clock.install({time:new Date('2026-10-10T12:00:00Z')});
  await page.goto(url,{waitUntil:'networkidle'});
  await page.evaluate(()=>document.fonts.ready);
  await page.waitForTimeout(500);
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
  await page.evaluate(()=>{
   const cursor=document.createElement('div');cursor.id='demo-cursor';
   cursor.setAttribute('aria-hidden','true');
@@ -31,10 +33,23 @@ export async function record({name,url,tour,output,prepare,initialCamera={x:W/2,
  if(prepare){try{await prepare(page);}catch(error){await browser.close();throw error;}}
  let frame=0,pos={...initialPointer},cam={...initialCamera};
  const events=[];
- const film={page,events,get seconds(){return frame/FPS;},
+ const film={page,events,rate:1,get seconds(){return frame/FPS;},
   mark(text){events.push({time:+this.seconds.toFixed(2),text});console.log(name,this.seconds.toFixed(1),text);},
   async frame(){
    const start=Date.now();
+   const step=1000/FPS*this.rate;
+   await page.clock.runFor(step);
+   // Native Web Animations use a separate timeline from JavaScript timers.
+   // Advance them explicitly so screenshot processing cannot skip the motion.
+   await page.evaluate(dt=>{
+    for(const animation of document.getAnimations()){
+     const end=animation.effect?.getComputedTiming().endTime;
+     const next=Number(animation.currentTime??0)+dt;
+     animation.pause();
+     if(Number.isFinite(end)&&next>=end)animation.finish();
+     else animation.currentTime=next;
+    }
+   },step);
    await page.evaluate(p=>{document.querySelector('#demo-cursor').style.transform=`translate(${p.x}px,${p.y}px)`;},pos);
    const shot=await page.screenshot({type:'png',animations:'allow'});
    const width=Math.round(W/cam.z),height=Math.round(H/cam.z);
@@ -48,7 +63,7 @@ export async function record({name,url,tour,output,prepare,initialCamera={x:W/2,
   cutCamera(x,y,z){cam={x,y,z};},
   async cutPointer(x,y){pos={x,y};await page.mouse.move(x,y);},
   async target(locator){const b=await locator.boundingBox();if(!b)throw Error('Invisible target');if(b.y<0||b.y+b.height>H)throw Error('Target outside viewport; scroll deliberately first');return {...b,x:b.x+b.width/2,y:b.y+b.height/2};},
-  async click(locator,seconds=.85){let b=await this.target(locator);await this.move(b.x,b.y,seconds);const end=await this.target(locator);if(Math.hypot(end.x-pos.x,end.y-pos.y)>3)await this.move(end.x,end.y,.4);await locator.click();await this.beat(.35);},
+  async click(locator,seconds=.85){let b=await this.target(locator);await this.move(b.x,b.y,seconds);const end=await this.target(locator);if(Math.hypot(end.x-pos.x,end.y-pos.y)>3)await this.move(end.x,end.y,.4);await page.mouse.down();await this.frame();await page.mouse.up();await this.beat(.5);},
   async type(locator,text){await this.click(locator,.65);await page.keyboard.press('Control+A');await page.keyboard.press('Backspace');for(let i=0;i<text.length;i+=2){await page.keyboard.insertText(text.slice(i,i+2));await this.beat(1/6);}await this.beat(.25);},
   async scroll(y,seconds=1){const start=await page.evaluate(()=>scrollY);for(let i=1,n=Math.round(seconds*FPS);i<=n;i++){await page.evaluate(y=>window.scrollTo(0,y),lerp(start,y,ease(i/n)));await this.frame();}},
   async scrollElement(locator,x,y,seconds=1){const from=await locator.evaluate(el=>({x:el.scrollLeft,y:el.scrollTop}));for(let i=1,n=Math.round(seconds*FPS);i<=n;i++){await locator.evaluate((el,p)=>el.scrollTo(p.x,p.y),{x:lerp(from.x,x,ease(i/n)),y:lerp(from.y,y,ease(i/n))});await this.frame();}},
