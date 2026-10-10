@@ -4,7 +4,7 @@ An Arc-inspired browser interface built as a Next.js web app, with a collapsible
 
 ## Demo
 
-![Exploring the floating sidebar, address palette, downloads popup, and docking controls.](docs/images/demo.gif)
+![Using the docked sidebar, undocking into the floating preview, and watching it dock again.](docs/images/demo.gif)
 
 [Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
 
