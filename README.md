@@ -4,7 +4,11 @@ An Arc-inspired browser interface built as a Next.js web app, with a collapsible
 
 ## Demo
 
-![Opening the address menu, choosing Home, and collapsing the sidebar.](docs/images/demo.gif)
+![Using the address menu, opening the downloads rail, and revealing the collapsed sidebar.](docs/images/demo.gif)
+
+[Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
+
+[Watch the MP4](docs/images/demo.mp4) · [Recording script](docs/demo/README.md)
 
 <details>
 <summary>Screenshot</summary>
