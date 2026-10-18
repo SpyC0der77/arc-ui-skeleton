@@ -27,13 +27,13 @@ An Arc-inspired browser interface built as a Next.js web app, with a collapsible
 
 ## Run locally
 
-Use Node.js 20.9+ and Bun.
+Use Node.js 20.9+ and pnpm 10.29.3.
 
 ```bash
 git clone https://github.com/SpyC0der77/arc-ui-skeleton.git
 cd arc-ui-skeleton
-bun install --frozen-lockfile
-bun run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Open [localhost:3000](http://localhost:3000).
@@ -42,10 +42,10 @@ Open [localhost:3000](http://localhost:3000).
 
 | Command | Purpose |
 | --- | --- |
-| `bun run dev` | Start the development server |
-| `bun run build` | Build the production app |
-| `bun run start` | Serve a production build |
-| `bun run lint` | Run ESLint |
+| `pnpm dev` | Start the development server |
+| `pnpm build` | Build the production app |
+| `pnpm start` | Serve a production build |
+| `pnpm lint` | Run ESLint |
 
 Run `build` before `start`.
 
