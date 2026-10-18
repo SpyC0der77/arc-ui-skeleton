@@ -30,7 +30,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
-import { motion, useReducedMotion } from "motion/react"
+import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "motion/react"
+import { SIDEBAR_DOCK_TRANSITION } from "@/lib/sidebar-motion"
 import { NudgeIcon, playNudgeOnPress, type NudgeIconHandle } from "./nudge-icon"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -102,6 +103,7 @@ function sidebarContainerMotion(
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
+  dockProgress: MotionValue<number>
   setOpen: (open: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
@@ -109,7 +111,6 @@ type SidebarContextProps = {
   toggleSidebar: () => void
   /** True while the hover peek is morphing into the docked sidebar (desktop). */
   dockFromPeek: boolean
-  endDockFromPeek: () => void
   /** Whether the floating peek panel is currently visible (desktop). */
   peekPanelOpen: boolean
   setPeekPanelOpen: (open: boolean) => void
@@ -230,6 +231,35 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+  const dockProgress = useMotionValue(open ? 1 : 0)
+  const reduceMotion = useReducedMotion()
+
+  React.useLayoutEffect(() => {
+    const target = open ? 1 : 0
+    if (dockProgress.get() === target) {
+      if (open) setDockFromPeek(false)
+      return
+    }
+    let finished = false
+    const finish = () => {
+      if (finished) return
+      finished = true
+      endSidebarLayoutAnimation()
+    }
+    beginSidebarLayoutAnimation()
+    const animation = animate(dockProgress, target, {
+      ...SIDEBAR_DOCK_TRANSITION,
+      duration: reduceMotion || isMobile ? 0 : SIDEBAR_DOCK_TRANSITION.duration,
+      onComplete: () => {
+        finish()
+        if (open) setDockFromPeek(false)
+      },
+    })
+    return () => {
+      animation.stop()
+      finish()
+    }
+  }, [dockProgress, open, reduceMotion, isMobile, beginSidebarLayoutAnimation, endSidebarLayoutAnimation])
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -244,10 +274,6 @@ function SidebarProvider({
     },
     [setOpenProp, open]
   )
-
-  const endDockFromPeek = React.useCallback(() => {
-    setDockFromPeek(false)
-  }, [])
 
   const leftRailWidthPx =
     downloadsRailOpen && !isMobile ? SIDEBAR_LEFT_RAIL_WIDTH_PX : 0
@@ -318,13 +344,13 @@ function SidebarProvider({
     () => ({
       state,
       open,
+      dockProgress,
       setOpen,
       isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
       dockFromPeek,
-      endDockFromPeek,
       peekPanelOpen,
       setPeekPanelOpen,
       layoutAnimating,
@@ -342,13 +368,13 @@ function SidebarProvider({
     [
       state,
       open,
+      dockProgress,
       setOpen,
       isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
       dockFromPeek,
-      endDockFromPeek,
       peekPanelOpen,
       layoutAnimating,
       beginSidebarLayoutAnimation,
@@ -403,6 +429,8 @@ function Sidebar({
     openMobile,
     setOpenMobile,
     open,
+    dockProgress,
+    sidebarWidthPx,
     dockFromPeek,
     beginSidebarLayoutAnimation,
     endSidebarLayoutAnimation,
@@ -410,6 +438,13 @@ function Sidebar({
     leftRailWidthPx,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
+  const offcanvasGapWidth = useTransform(
+    dockProgress,
+    (progress) => `calc(var(--sidebar-width) * ${progress})`,
+  )
+  const offcanvasX = useTransform(dockProgress, (progress) =>
+    (side === "left" ? -1 : 1) * sidebarWidthPx * (1 - progress),
+  )
   const sidebarGapTransition =
     reduceMotion || isResizingSidebar
       ? { duration: 0 }
@@ -514,7 +549,8 @@ function Sidebar({
           "group-data-[side=right]:rotate-180",
         )}
         initial={false}
-        animate={{ width: sidebarGapMotionWidth(collapsible, open, variant) }}
+        style={collapsible === "offcanvas" ? { width: offcanvasGapWidth } : undefined}
+        animate={collapsible === "offcanvas" ? undefined : { width: sidebarGapMotionWidth(collapsible, open, variant) }}
         transition={sidebarGapTransition}
       />
       <motion.div
@@ -533,6 +569,7 @@ function Sidebar({
           className,
         )}
         initial={false}
+        style={collapsible === "offcanvas" ? { x: offcanvasX } : undefined}
         animate={{
           ...sidebarContainerMotion(
             side,
@@ -541,6 +578,8 @@ function Sidebar({
             variant,
             dockFromPeek,
           ),
+          // The offcanvas panel follows the same clock as its gap and page.
+          ...(collapsible === "offcanvas" ? { x: undefined } : null),
           ...(side === "left" ? { left: leftRailWidthPx } : null),
         }}
         transition={sidebarContainerTransition}
@@ -588,7 +627,7 @@ function SidebarTrigger({
         className,
         freezeChromeTransitions && "transition-none",
       )}
-      onPointerDown={playNudgeOnPress(iconRef, onPointerDown)}
+      onPointerDown={(event) => playNudgeOnPress(iconRef, onPointerDown)(event)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
