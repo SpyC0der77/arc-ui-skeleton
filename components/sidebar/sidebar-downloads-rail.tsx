@@ -1,76 +1,38 @@
 "use client";
 
 import * as React from "react";
-import { Gift, X } from "lucide-react";
+import {
+  Archive,
+  CircleArrowDown,
+  Images,
+  Paintbrush,
+  PanelsTopLeft,
+  Presentation,
+  X,
+} from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { downloads } from "./downloads-data";
-import {
-  NudgeIcon,
-  playNudgeOnPress,
-  type IconNudgePreset,
-  type NudgeIconHandle,
-} from "./nudge-icon";
 import { SIDEBAR_LEFT_RAIL_WIDTH_PX, useSidebar } from "./sidebar";
 
 const dockEase = [0.22, 1, 0.36, 1] as const;
 
-function DownloadRailItem({
-  shortMeta,
-  icon: Icon,
-  nudge,
-  progress,
-  isOpen,
-}: {
-  shortMeta: string;
-  icon: (props: { className?: string }) => React.ReactNode;
-  nudge: IconNudgePreset;
-  progress?: number;
-  isOpen: boolean;
-}) {
-  const iconRef = React.useRef<NudgeIconHandle>(null);
+const librarySections = [
+  { label: "Media", icon: Images },
+  { label: "Downloads", icon: CircleArrowDown },
+  { label: "Easels", icon: Presentation },
+  { label: "Spaces", icon: PanelsTopLeft },
+  { label: "Boosts", icon: Paintbrush },
+  { label: "Archived Tabs", icon: Archive },
+] as const;
 
-  return (
-    <li className="w-full">
-      <button
-        type="button"
-        tabIndex={isOpen ? undefined : -1}
-        className="flex w-full flex-col items-center gap-1 rounded-lg px-1.5 py-2 outline-none hover:bg-black/6 focus-visible:bg-black/6"
-        onPointerDown={playNudgeOnPress(iconRef)}
-      >
-        <span className="flex size-8 items-center justify-center rounded-md border border-black/10 bg-white/70 text-black/60">
-          <NudgeIcon ref={iconRef} preset={nudge}>
-            <Icon className="size-4" />
-          </NudgeIcon>
-        </span>
-        <span className="w-full truncate text-center text-[10px] text-black/45">
-          {shortMeta}
-        </span>
-        {progress != null && (
-          <span className="mt-0.5 block h-0.75 w-8 overflow-hidden rounded-full bg-black/10">
-            <span
-              className="block h-full rounded-full bg-black/40"
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
-          </span>
-        )}
-      </button>
-    </li>
-  );
-}
+type LibrarySection = (typeof librarySections)[number]["label"];
 
-/**
- * Narrow rail docked to the left of the sidebar, toggled by the downloads button.
- * Stays in normal flow so opening it pushes the sidebar gap and the page inset right.
- */
+/** Library navigation beside the main sidebar, opened by its existing trigger. */
 export function SidebarDownloadsRail({ className }: { className?: string }) {
-  const { downloadsRailOpen, toggleDownloadsRail, leftRailWidthPx, isMobile } =
-    useSidebar();
+  const { downloadsRailOpen, toggleDownloadsRail, leftRailWidthPx, isMobile } = useSidebar();
+  const [activeSection, setActiveSection] = React.useState<LibrarySection>("Spaces");
   const reduceMotion = useReducedMotion();
-  const giftRef = React.useRef<NudgeIconHandle>(null);
-  const closeRef = React.useRef<NudgeIconHandle>(null);
 
   if (isMobile) return null;
 
@@ -83,59 +45,54 @@ export function SidebarDownloadsRail({ className }: { className?: string }) {
     <motion.div
       data-slot="sidebar-downloads-rail"
       aria-hidden={!isOpen}
-      className={cn(
-        "relative z-20 shrink-0 overflow-hidden max-md:hidden",
-        className,
-      )}
+      inert={!isOpen}
+      className={cn("relative isolate z-20 shrink-0 max-md:hidden", className)}
       initial={false}
       animate={{ width: leftRailWidthPx }}
       transition={transition}
     >
-      <motion.div
-        className="flex h-svh flex-col items-stretch gap-2 border-r border-black/10 px-1.5 py-4"
-        style={{ width: SIDEBAR_LEFT_RAIL_WIDTH_PX }}
-        initial={false}
-        animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -12 }}
-        transition={transition}
-      >
-        <div className="flex w-full items-center justify-center gap-1.5">
-          <span
-            className="inline-flex text-black/45"
-            onPointerDown={playNudgeOnPress(giftRef)}
-          >
-            <NudgeIcon ref={giftRef} preset="gift">
-              <Gift className="size-4" aria-hidden />
-            </NudgeIcon>
-          </span>
-          <Button
+      <div className="h-full overflow-hidden">
+        <motion.nav
+          aria-label="Library"
+          className="relative flex h-svh flex-col border-r border-black/10 bg-sidebar px-1.5 py-12"
+          style={{ width: SIDEBAR_LEFT_RAIL_WIDTH_PX }}
+          initial={false}
+          animate={{ x: isOpen ? 0 : -SIDEBAR_LEFT_RAIL_WIDTH_PX }}
+          transition={transition}
+        >
+          <button
             type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Close downloads"
-            className="rounded-md text-black/45 hover:bg-black/10 hover:text-black"
+            aria-label="Close secondary sidebar"
             onClick={toggleDownloadsRail}
-            onPointerDown={playNudgeOnPress(closeRef)}
-            tabIndex={isOpen ? undefined : -1}
+            className="absolute top-3 right-2 flex size-7 items-center justify-center rounded-md text-black/65 outline-none hover:bg-black/10 hover:text-black focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <NudgeIcon ref={closeRef} preset="close">
-              <X className="size-3.5" />
-            </NudgeIcon>
-          </Button>
-        </div>
-
-        <ul className="no-scrollbar flex w-full min-h-0 flex-1 flex-col items-stretch justify-between gap-1 overflow-y-auto">
-          {downloads.map(({ id, shortMeta, icon, nudge, progress }) => (
-            <DownloadRailItem
-              key={id}
-              shortMeta={shortMeta}
-              icon={icon}
-              nudge={nudge}
-              progress={progress}
-              isOpen={isOpen}
-            />
-          ))}
-        </ul>
-      </motion.div>
+            <X className="size-4" aria-hidden="true" />
+          </button>
+          <ul className="flex min-h-0 flex-1 flex-col justify-around gap-3 overflow-y-auto">
+            {librarySections.map(({ label, icon: Icon }) => (
+              <li key={label} className="shrink-0">
+                <button
+                  type="button"
+                  aria-pressed={activeSection === label}
+                  onClick={() => setActiveSection(label)}
+                  className="group flex min-h-16 w-full flex-col items-center justify-center gap-2 rounded-md px-0.5 py-2 font-medium text-black/65 outline-none transition-colors duration-150 hover:bg-black/6 hover:text-black/85 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset aria-pressed:bg-black/8 aria-pressed:text-black/90"
+                >
+                  <Icon className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                  <span className="w-full whitespace-nowrap text-center text-[11px] leading-4 tracking-[-0.01em]">{label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </motion.nav>
+      </div>
+      <motion.div
+        data-slot="sidebar-library-panel"
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 left-full -z-10 h-svh w-(--sidebar-width) bg-sidebar"
+        initial={false}
+        animate={{ x: isOpen ? 0 : "-100%" }}
+        transition={transition}
+      />
     </motion.div>
   );
 }
