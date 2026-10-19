@@ -51,7 +51,7 @@ export function SidebarDownloadsRail({ className }: { className?: string }) {
       animate={{ width: leftRailWidthPx }}
       transition={transition}
     >
-      <div className="h-full overflow-hidden">
+      <div className="relative z-10 h-full overflow-hidden">
         <motion.nav
           aria-label="Library"
           className="relative flex h-svh flex-col border-r border-black/10 bg-sidebar px-1.5 py-12"
@@ -88,7 +88,7 @@ export function SidebarDownloadsRail({ className }: { className?: string }) {
       <motion.div
         data-slot="sidebar-library-panel"
         aria-hidden="true"
-        className="pointer-events-none absolute top-0 left-full -z-10 h-svh w-(--sidebar-width) bg-sidebar"
+        className="pointer-events-none absolute top-0 left-full z-0 h-svh w-(--sidebar-width) bg-sidebar"
         initial={false}
         animate={{ x: isOpen ? 0 : "-100%" }}
         transition={transition}
