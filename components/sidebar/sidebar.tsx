@@ -32,7 +32,6 @@ import {
 import { PanelLeftIcon } from "lucide-react"
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "motion/react"
 import { SIDEBAR_DOCK_TRANSITION } from "@/lib/sidebar-motion"
-import { NudgeIcon, playNudgeOnPress, type NudgeIconHandle } from "./nudge-icon"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -672,12 +671,10 @@ function Sidebar({
 function SidebarTrigger({
   className,
   onClick,
-  onPointerDown,
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar, layoutAnimating, dockFromPeek } = useSidebar()
   const freezeChromeTransitions = layoutAnimating || dockFromPeek
-  const iconRef = React.useRef<NudgeIconHandle>(null)
 
   return (
     <Button
@@ -689,20 +686,13 @@ function SidebarTrigger({
         className,
         freezeChromeTransitions && "transition-none",
       )}
-      onPointerDown={(event) => playNudgeOnPress(iconRef, onPointerDown)(event)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <NudgeIcon
-        ref={iconRef}
-        preset="panel"
-        disabled={freezeChromeTransitions}
-      >
-        <PanelLeftIcon />
-      </NudgeIcon>
+      <PanelLeftIcon />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
