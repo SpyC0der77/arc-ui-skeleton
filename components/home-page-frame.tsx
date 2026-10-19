@@ -13,7 +13,7 @@ interface HomePageFrameProps {
 }
 
 export function HomePageFrame({ className }: HomePageFrameProps) {
-  const { dockProgress, dockFromPeek, sidebarWidthPx, isMobile } = useSidebar();
+  const { dockProgress, dockFromPeek, isMobile } = useSidebar();
   const paddingY = useTransform(dockProgress, (p) => isMobile ? 6 : p * 10);
   const paddingRight = useTransform(dockProgress, (p) => isMobile ? 6 : p * 10);
   const scale = useTransform(dockProgress, (p) => isMobile ? 1 : 1 - p * (1 - DOCKED_PAGE_SCALE));
@@ -21,21 +21,23 @@ export function HomePageFrame({ className }: HomePageFrameProps) {
   const boxShadow = useTransform(dockProgress, (p) =>
     `0 1px 6px rgba(68,55,80,${0.22 * (isMobile ? 1 : p)})`,
   );
-  // While docking, the page's layout edge travels underneath the preview.
-  // Round the exposed edge beside the preview instead of hiding the rounding
-  // behind it until the handoff. Keep the scale's inset beside that edge too,
-  // so it arrives at the final page position without reversing direction.
-  const clipPath = useTransform(dockProgress, (p) => {
-    const pageScale = 1 - p * (1 - DOCKED_PAGE_SCALE);
-    const coveredWidth = (sidebarWidthPx + 8) * (1 - p);
-    return `inset(0px 0px 0px ${coveredWidth / pageScale}px round ${p * 10}px)`;
-  });
+  const paddingLeft = useTransform(dockProgress, (p) => isMobile ? 3 : dockFromPeek ? 8 * (1 - p) : 0);
+  // Reserving the sidebar's final width exposes the page's real rounded edge.
+  // Fade the old full-width page behind it to preserve the initial floating pose.
+  const backgroundOpacity = useTransform(dockProgress, (p) => 1 - p);
 
   return (
     <motion.div
-      className="flex min-h-0 flex-1 flex-col"
-      style={{ paddingTop: paddingY, paddingBottom: paddingY, paddingRight, paddingLeft: isMobile ? 3 : 0 }}
+      className="relative flex min-h-0 flex-1 flex-col"
+      style={{ paddingTop: paddingY, paddingBottom: paddingY, paddingRight, paddingLeft }}
     >
+      {dockFromPeek && !isMobile && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 bg-white"
+          style={{ opacity: backgroundOpacity }}
+        />
+      )}
       <motion.div
         data-slot="page-frame"
         className={cn("min-h-0 flex-1 bg-white", className)}
@@ -44,10 +46,7 @@ export function HomePageFrame({ className }: HomePageFrameProps) {
           borderRadius,
           boxShadow,
           transformOrigin: "62% 50%",
-          // Keep the exposed rounded edge above the floating preview.
-          zIndex: dockFromPeek && !isMobile ? 46 : undefined,
           position: "relative",
-          clipPath: dockFromPeek && !isMobile ? clipPath : "none",
         }}
       />
     </motion.div>

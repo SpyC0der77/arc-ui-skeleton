@@ -1,6 +1,6 @@
 // Run with page.evaluate(verifyDocking) after revealing the floating sidebar.
-// Hit testing matters here: matching numeric radii alone misses a page corner
-// hidden behind the preview for most of the animation.
+// Check the actual surface, painted corners, and the end of the transition.
+// Numeric radii alone miss both occlusion and a floating/docked DOM swap.
 export async function verifyDocking() {
   const frame = document.querySelector('[data-slot="page-frame"]');
   const preview = document.querySelector('[aria-label="Sidebar preview"]');
@@ -9,28 +9,24 @@ export async function verifyDocking() {
   }
   await new Promise(resolve => setTimeout(resolve, 250));
   const samples = [];
-  preview.querySelector('[data-slot="sidebar-trigger"]').click();
+  const continuity = [];
+  const trigger = preview.querySelector('[data-slot="sidebar-trigger"]');
+  trigger.click();
   const start = performance.now();
   await new Promise(resolve => {
     function sample() {
       const rect = frame.getBoundingClientRect();
       const radius = parseFloat(getComputedStyle(frame).borderTopLeftRadius);
-      const floating = document.querySelector('[role="complementary"]');
-      if (floating && radius > 4 && radius < 9) {
-        // Find the painted edge, independently of the clipping calculation.
-        let left = rect.left;
-        let right = Math.min(rect.right - 1, floating.getBoundingClientRect().right + 32);
-        for (let i = 0; i < 14; i++) {
-          const x = (left + right) / 2;
-          if (document.elementFromPoint(x, rect.top + rect.height / 2) === frame) right = x;
-          else left = x;
-        }
+      continuity.push(preview.isConnected && trigger.isConnected &&
+        preview === document.querySelector('[data-slot="sidebar-container"]') &&
+        getComputedStyle(preview).opacity === '1');
+      if (radius > 4 && radius < 9) {
         samples.push({
           radius,
-          edge: right,
-          top: document.elementFromPoint(right + 1, rect.top + 1) !== frame,
-          bottom: document.elementFromPoint(right + 1, rect.bottom - 1) !== frame,
-          inside: document.elementFromPoint(right + radius + 2, rect.top + radius + 2) === frame,
+          edge: rect.left,
+          top: document.elementFromPoint(rect.left + radius * .05, rect.top + radius * .05) !== frame,
+          bottom: document.elementFromPoint(rect.left + radius * .05, rect.bottom - radius * .05) !== frame,
+          inside: document.elementFromPoint(rect.left + radius + 2, rect.top + radius + 2) === frame,
         });
       }
       if (performance.now() - start < 450) requestAnimationFrame(sample);
@@ -38,6 +34,9 @@ export async function verifyDocking() {
     }
     requestAnimationFrame(sample);
   });
+  if (!continuity.every(Boolean)) {
+    throw new Error('Docking replaced or hid the visible sidebar surface.');
+  }
   if (samples.length < 2 || !samples.every(s => s.top && s.bottom && s.inside)) {
     throw new Error(`Docking corners were obscured: ${JSON.stringify(samples)}`);
   }
@@ -47,5 +46,5 @@ export async function verifyDocking() {
   if (getComputedStyle(frame).clipPath !== 'none' || document.querySelector('[role="complementary"]')) {
     throw new Error('Docking did not clear the temporary clipping and preview.');
   }
-  return { checkedFrames: samples.length, visibleCorners: true, cleanHandoff: true };
+  return { checkedFrames: continuity.length, visibleCorners: true, persistentSurface: true };
 }

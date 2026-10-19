@@ -34,11 +34,7 @@ export default function Home() {
             <HomePageFrame />
           </SidebarInset>
 
-          <SidebarHoverPeek>
-            <SidebarContent className="gap-7 py-4 pl-3 pr-1.5">
-              <ArcSidebarPanelContent />
-            </SidebarContent>
-          </SidebarHoverPeek>
+          <SidebarHoverPeek />
         </div>
       </ArcUrlCommandProvider>
     </SidebarProvider>

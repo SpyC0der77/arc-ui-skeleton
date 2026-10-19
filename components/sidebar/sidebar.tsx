@@ -70,7 +70,6 @@ function sidebarContainerMotion(
   collapsible: "offcanvas" | "icon" | "none",
   open: boolean,
   variant: "sidebar" | "floating" | "inset",
-  dockFromPeek: boolean,
 ): { x: string | number; width: string; opacity: number } {
   const full = "var(--sidebar-width)"
   const iconWidth =
@@ -89,7 +88,7 @@ function sidebarContainerMotion(
     return {
       x: 0,
       width: full,
-      opacity: dockFromPeek ? 0 : 1,
+      opacity: 1,
     }
   }
 
@@ -104,16 +103,18 @@ type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
   dockProgress: MotionValue<number>
+  sidebarVisibility: MotionValue<number>
   setOpen: (open: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
-  /** True while the hover peek is morphing into the docked sidebar (desktop). */
+  /** Keeps the preview/page geometry continuous through docking and reversals. */
   dockFromPeek: boolean
   /** Whether the floating peek panel is currently visible (desktop). */
   peekPanelOpen: boolean
-  setPeekPanelOpen: (open: boolean) => void
+  activatePeek: () => void
+  schedulePeekClose: () => void
   /** True while desktop sidebar chrome (peek or docked panel) is moving — freeze button transitions. */
   layoutAnimating: boolean
   beginSidebarLayoutAnimation: () => void
@@ -170,6 +171,7 @@ function SidebarProvider({
   const [openMobile, setOpenMobile] = React.useState(false)
   const [dockFromPeek, setDockFromPeek] = React.useState(false)
   const [peekPanelOpen, setPeekPanelOpen] = React.useState(false)
+  const peekCloseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const layoutAnimCountRef = React.useRef(0)
   const [layoutAnimating, setLayoutAnimating] = React.useState(false)
   const [sidebarWidthPx, setSidebarWidthPx] = React.useState(() =>
@@ -232,12 +234,40 @@ function SidebarProvider({
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
   const dockProgress = useMotionValue(open ? 1 : 0)
+  const sidebarVisibility = useMotionValue(open ? 1 : 0)
   const reduceMotion = useReducedMotion()
+
+  const cancelPeekClose = React.useCallback(() => {
+    if (peekCloseTimerRef.current === null) return
+    clearTimeout(peekCloseTimerRef.current)
+    peekCloseTimerRef.current = null
+  }, [])
+  const activatePeek = React.useCallback(() => {
+    cancelPeekClose()
+    if (!open && !isMobile) setPeekPanelOpen(true)
+  }, [cancelPeekClose, open, isMobile])
+  const schedulePeekClose = React.useCallback(() => {
+    cancelPeekClose()
+    if (open) return
+    peekCloseTimerRef.current = setTimeout(() => {
+      // A fast pointer can reach the panel before its reveal finishes, without
+      // another pointer-enter event when the panel moves underneath it.
+      if (!document.querySelector('[data-slot="sidebar-container"]:hover')) {
+        setPeekPanelOpen(false)
+      }
+      peekCloseTimerRef.current = null
+    }, 200)
+  }, [cancelPeekClose, open])
+  React.useEffect(() => cancelPeekClose, [cancelPeekClose])
 
   React.useLayoutEffect(() => {
     const target = open ? 1 : 0
-    if (dockProgress.get() === target) {
-      if (open) setDockFromPeek(false)
+    const visibilityTarget = open || (peekPanelOpen && !isMobile) ? 1 : 0
+    const from = dockProgress.get()
+    const visibilityFrom = sidebarVisibility.get()
+    if (from === target && visibilityFrom === visibilityTarget) {
+      if (open) setPeekPanelOpen(false)
+      setDockFromPeek(false)
       return
     }
     let finished = false
@@ -247,19 +277,26 @@ function SidebarProvider({
       endSidebarLayoutAnimation()
     }
     beginSidebarLayoutAnimation()
-    const animation = animate(dockProgress, target, {
+    // Both layout and the persistent panel's visibility use this one clock.
+    // Reversals start at the current pose instead of swapping panel instances.
+    const animation = animate(0, 1, {
       ...SIDEBAR_DOCK_TRANSITION,
-      duration: reduceMotion || isMobile ? 0 : SIDEBAR_DOCK_TRANSITION.duration,
+      duration: reduceMotion || isMobile ? 0 : from === target ? 0.18 : SIDEBAR_DOCK_TRANSITION.duration,
+      onUpdate: (progress) => {
+        dockProgress.set(from + (target - from) * progress)
+        sidebarVisibility.set(visibilityFrom + (visibilityTarget - visibilityFrom) * progress)
+      },
       onComplete: () => {
         finish()
-        if (open) setDockFromPeek(false)
+        setDockFromPeek(false)
+        if (open) setPeekPanelOpen(false)
       },
     })
     return () => {
       animation.stop()
       finish()
     }
-  }, [dockProgress, open, reduceMotion, isMobile, beginSidebarLayoutAnimation, endSidebarLayoutAnimation])
+  }, [dockProgress, sidebarVisibility, open, peekPanelOpen, reduceMotion, isMobile, beginSidebarLayoutAnimation, endSidebarLayoutAnimation])
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -284,13 +321,12 @@ function SidebarProvider({
       setOpenMobile((o) => !o)
       return
     }
-    if (open) {
-      setDockFromPeek(false)
-    } else {
+    cancelPeekClose()
+    if (!open) {
       setDockFromPeek(peekPanelOpen)
     }
     setOpen((o) => !o)
-  }, [isMobile, open, peekPanelOpen, setOpen, setOpenMobile])
+  }, [isMobile, open, peekPanelOpen, setOpen, setOpenMobile, cancelPeekClose])
 
   /**
    * Toggling the rail from an undocked sidebar docks first, then opens the rail once the
@@ -345,6 +381,7 @@ function SidebarProvider({
       state,
       open,
       dockProgress,
+      sidebarVisibility,
       setOpen,
       isMobile,
       openMobile,
@@ -352,7 +389,8 @@ function SidebarProvider({
       toggleSidebar,
       dockFromPeek,
       peekPanelOpen,
-      setPeekPanelOpen,
+      activatePeek,
+      schedulePeekClose,
       layoutAnimating,
       beginSidebarLayoutAnimation,
       endSidebarLayoutAnimation,
@@ -369,6 +407,7 @@ function SidebarProvider({
       state,
       open,
       dockProgress,
+      sidebarVisibility,
       setOpen,
       isMobile,
       openMobile,
@@ -376,6 +415,8 @@ function SidebarProvider({
       toggleSidebar,
       dockFromPeek,
       peekPanelOpen,
+      activatePeek,
+      schedulePeekClose,
       layoutAnimating,
       beginSidebarLayoutAnimation,
       endSidebarLayoutAnimation,
@@ -430,20 +471,30 @@ function Sidebar({
     setOpenMobile,
     open,
     dockProgress,
+    sidebarVisibility,
     sidebarWidthPx,
     dockFromPeek,
+    peekPanelOpen,
+    activatePeek,
+    schedulePeekClose,
     beginSidebarLayoutAnimation,
     endSidebarLayoutAnimation,
     isResizingSidebar,
     leftRailWidthPx,
   } = useSidebar()
   const reduceMotion = useReducedMotion()
-  const offcanvasGapWidth = useTransform(
-    dockProgress,
-    (progress) => `calc(var(--sidebar-width) * ${progress})`,
+  const offcanvasGapWidth = useTransform(() =>
+    `calc(var(--sidebar-width) * ${dockFromPeek ? 1 : dockProgress.get()})`,
   )
-  const offcanvasX = useTransform(dockProgress, (progress) =>
-    (side === "left" ? -1 : 1) * sidebarWidthPx * (1 - progress),
+  const offcanvasX = useTransform(() => {
+    const inset = 8 * (1 - dockProgress.get())
+    const x = inset - (1 - sidebarVisibility.get()) * (sidebarWidthPx + inset)
+    return side === "left" ? x : -x
+  })
+  const panelInset = useTransform(dockProgress, (p) => 8 * (1 - p))
+  const panelRadius = useTransform(dockProgress, (p) => 12 * (1 - p))
+  const panelShadow = useTransform(dockProgress, (p) =>
+    `inset 0 0 0 1px rgba(0,0,0,${0.1 * (1 - p)}), 0 ${12 * (1 - p)}px ${40 * (1 - p)}px rgba(68,55,80,${0.28 * (1 - p)})`,
   )
   const sidebarGapTransition =
     reduceMotion || isResizingSidebar
@@ -452,10 +503,7 @@ function Sidebar({
         ? { duration: SIDEBAR_DOCK_DURATION_S, ease: SIDEBAR_DOCK_EASE }
         : { duration: SIDEBAR_STANDARD_DURATION_S, ease: "linear" as const }
 
-  /**
-   * Snap x/opacity when docking from peek so we never tween through a half-visible on-screen sidebar.
-   * Opacity always snaps (duration 0) so the handoff after peek unmounts never fades over the page gap.
-   */
+  // Offcanvas geometry is driven by the shared clock, without an opacity handoff.
   const sidebarContainerTransition = reduceMotion
     ? { duration: 0 }
     : isResizingSidebar
@@ -556,9 +604,13 @@ function Sidebar({
       <motion.div
         data-slot="sidebar-container"
         data-side={side}
+        role={collapsible === "offcanvas" && !open ? "complementary" : undefined}
+        aria-label={collapsible === "offcanvas" && !open ? "Sidebar preview" : undefined}
+        aria-hidden={collapsible === "offcanvas" ? !open && !peekPanelOpen : undefined}
+        inert={collapsible === "offcanvas" && !open && !peekPanelOpen}
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh md:flex",
-          open && dockFromPeek && "pointer-events-none",
+          collapsible === "offcanvas" && (!open || dockFromPeek) && "overflow-hidden",
           side === "left" ? "left-0" : "right-0",
           variant === "floating" || variant === "inset"
             ? "p-2"
@@ -569,31 +621,41 @@ function Sidebar({
           className,
         )}
         initial={false}
-        style={collapsible === "offcanvas" ? { x: offcanvasX } : undefined}
-        animate={{
+        style={collapsible === "offcanvas" ? {
+          x: offcanvasX,
+          top: panelInset,
+          bottom: panelInset,
+          height: "auto",
+          width: "var(--sidebar-width)",
+          borderRadius: panelRadius,
+          boxShadow: panelShadow,
+        } : undefined}
+        animate={collapsible === "offcanvas" ? {
+          ...(side === "left" ? { left: leftRailWidthPx } : null),
+        } : {
           ...sidebarContainerMotion(
             side,
             collapsible,
             open,
             variant,
-            dockFromPeek,
           ),
-          // The offcanvas panel follows the same clock as its gap and page.
-          ...(collapsible === "offcanvas" ? { x: undefined } : null),
           ...(side === "left" ? { left: leftRailWidthPx } : null),
         }}
         transition={sidebarContainerTransition}
         onAnimationStart={() => {
-          if (!(dockFromPeek && open)) beginSidebarLayoutAnimation()
+          if (collapsible !== "offcanvas") beginSidebarLayoutAnimation()
         }}
         onAnimationComplete={() => {
-          if (!(dockFromPeek && open)) endSidebarLayoutAnimation()
+          if (collapsible !== "offcanvas") endSidebarLayoutAnimation()
         }}
+        onPointerEnter={collapsible === "offcanvas" ? activatePeek : undefined}
+        onPointerLeave={collapsible === "offcanvas" ? schedulePeekClose : undefined}
         {...sidebarContainerProps}
       >
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
+          style={collapsible === "offcanvas" ? { borderRadius: "inherit" } : undefined}
           className="pointer-events-auto flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           <SidebarSideContext.Provider value={side}>
