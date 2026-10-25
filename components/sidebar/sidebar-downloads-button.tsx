@@ -16,7 +16,6 @@ import {
 import { useSidebar } from "./sidebar";
 
 const CLOSE_DELAY_MS = 160;
-const ARRIVAL_PEEK_MS = 3000;
 
 /** Horizontal center of the trigger button, so the panel grows out of the icon. */
 const DROPUP_ORIGIN_X_PX = 16;
@@ -42,7 +41,7 @@ function DownloadMenuItem({
         type="button"
         role="menuitem"
         className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-black/6 focus-visible:bg-black/6"
-        onPointerDown={playNudgeOnPress(iconRef)}
+        onPointerDown={(event) => playNudgeOnPress(iconRef)(event)}
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-black/6 text-black/60">
           <NudgeIcon ref={iconRef} preset={nudge}>
@@ -76,7 +75,6 @@ export function SidebarDownloadsButton({
   arrivalId?: string;
 }) {
   const [interactionOpen, setInteractionOpen] = React.useState(false);
-  const [expiredArrival, setExpiredArrival] = React.useState<string | undefined>(undefined);
   const closeTimerRef = React.useRef<number | null>(null);
   const pointerInside = React.useRef(false);
   const focusInside = React.useRef(false);
@@ -85,9 +83,8 @@ export function SidebarDownloadsButton({
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const lastArrival = React.useRef<string | undefined>(undefined);
   const reduceMotion = useReducedMotion();
-  const { downloadsRailOpen, toggleDownloadsRail } = useSidebar();
-  const arrivalPeek = !!arrivalId && arrivalId !== expiredArrival;
-  const isOpen = !downloadsRailOpen && (interactionOpen || arrivalPeek);
+  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival } = useSidebar();
+  const isOpen = !downloadsRailOpen && (interactionOpen || downloadArrivalPeek);
 
   const cancelClose = React.useCallback(() => {
     if (closeTimerRef.current == null) return;
@@ -111,12 +108,6 @@ export function SidebarDownloadsButton({
   }, [cancelClose]);
 
   React.useEffect(() => cancelClose, [cancelClose]);
-
-  React.useEffect(() => {
-    if (!arrivalId) return;
-    const timer = window.setTimeout(() => setExpiredArrival(arrivalId), ARRIVAL_PEEK_MS);
-    return () => clearTimeout(timer);
-  }, [arrivalId]);
 
   React.useEffect(() => {
     if (!arrivalId || lastArrival.current === arrivalId) return;
@@ -154,7 +145,7 @@ export function SidebarDownloadsButton({
   function handleClick() {
     cancelClose();
     setInteractionOpen(false);
-    setExpiredArrival(arrivalId);
+    dismissDownloadArrival();
     toggleDownloadsRail();
   }
 
@@ -184,7 +175,7 @@ export function SidebarDownloadsButton({
         onPointerLeave={pointerLeave}
         onFocus={focusEnter}
         onBlur={focusLeave}
-        onPointerDown={playNudgeOnPress(giftRef)}
+        onPointerDown={(event) => playNudgeOnPress(giftRef)(event)}
         onClick={handleClick}
       >
         <NudgeIcon ref={giftRef} preset="gift">

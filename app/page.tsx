@@ -18,7 +18,7 @@ import { HomePageFrame } from "@/components/home-page-frame"
 export default function Home() {
   const [downloadArrivalId, setDownloadArrivalId] = useState<string>()
   return (
-    <SidebarProvider>
+    <SidebarProvider downloadArrivalId={downloadArrivalId}>
       <ArcUrlCommandProvider>
         <div className="flex min-h-svh w-full bg-[#cec7d4]">
           <SidebarDownloadsRail />
