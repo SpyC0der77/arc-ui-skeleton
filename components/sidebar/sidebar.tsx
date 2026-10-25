@@ -340,8 +340,9 @@ function SidebarProvider({
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
-      if (downloadArrivalPeek && !openMobile) {
+      if (downloadArrivalPeek) {
         dismissDownloadArrival()
+        setOpenMobile(false)
         return
       }
       setOpenMobile((o) => !o)
@@ -352,7 +353,7 @@ function SidebarProvider({
       setDockFromPeek(peekPanelOpen)
     }
     setOpen((o) => !o)
-  }, [isMobile, open, openMobile, downloadArrivalPeek, dismissDownloadArrival, peekPanelOpen, setOpen, setOpenMobile, cancelPeekClose])
+  }, [isMobile, open, downloadArrivalPeek, dismissDownloadArrival, peekPanelOpen, setOpen, setOpenMobile, cancelPeekClose])
 
   /**
    * Toggling the rail from an undocked sidebar docks first, then opens the rail once the

@@ -82,7 +82,7 @@ export function SidebarDownloadsButton({
   const giftRef = React.useRef<NudgeIconHandle>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const reduceMotion = useReducedMotion();
-  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival, claimDownloadArrival } = useSidebar();
+  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival, claimDownloadArrival, isMobile, setOpenMobile } = useSidebar();
   const isOpen = !downloadsRailOpen && (interactionOpen || downloadArrivalPeek);
 
   const cancelClose = React.useCallback(() => {
@@ -111,16 +111,16 @@ export function SidebarDownloadsButton({
   React.useEffect(() => {
     if (!arrivalId || !downloadArrivalPeek || !claimDownloadArrival(arrivalId)) return;
     if (!reduceMotion) giftRef.current?.play();
-    const feedback = buttonRef.current?.animate([
+    buttonRef.current?.animate([
       { backgroundColor: "rgba(68,55,80,0)" },
       { backgroundColor: "rgba(68,55,80,0.14)" },
       { backgroundColor: "rgba(68,55,80,0)" },
     ], { duration: 360, easing: "ease-out" });
-    return () => feedback?.cancel();
   }, [arrivalId, downloadArrivalPeek, reduceMotion, claimDownloadArrival]);
 
   function pointerEnter() {
     pointerInside.current = true;
+    if (isMobile) setOpenMobile(true);
     open();
   }
 
@@ -132,6 +132,7 @@ export function SidebarDownloadsButton({
   function focusEnter(event: React.FocusEvent) {
     if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
     focusInside.current = true;
+    if (isMobile) setOpenMobile(true);
     open();
   }
 
