@@ -81,9 +81,8 @@ export function SidebarDownloadsButton({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const giftRef = React.useRef<NudgeIconHandle>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
-  const lastArrival = React.useRef<string | undefined>(undefined);
   const reduceMotion = useReducedMotion();
-  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival } = useSidebar();
+  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival, claimDownloadArrival } = useSidebar();
   const isOpen = !downloadsRailOpen && (interactionOpen || downloadArrivalPeek);
 
   const cancelClose = React.useCallback(() => {
@@ -110,8 +109,7 @@ export function SidebarDownloadsButton({
   React.useEffect(() => cancelClose, [cancelClose]);
 
   React.useEffect(() => {
-    if (!arrivalId || !downloadArrivalPeek || lastArrival.current === arrivalId) return;
-    lastArrival.current = arrivalId;
+    if (!arrivalId || !downloadArrivalPeek || !claimDownloadArrival(arrivalId)) return;
     if (!reduceMotion) giftRef.current?.play();
     const feedback = buttonRef.current?.animate([
       { backgroundColor: "rgba(68,55,80,0)" },
@@ -119,7 +117,7 @@ export function SidebarDownloadsButton({
       { backgroundColor: "rgba(68,55,80,0)" },
     ], { duration: 360, easing: "ease-out" });
     return () => feedback?.cancel();
-  }, [arrivalId, downloadArrivalPeek, reduceMotion]);
+  }, [arrivalId, downloadArrivalPeek, reduceMotion, claimDownloadArrival]);
 
   function pointerEnter() {
     pointerInside.current = true;
