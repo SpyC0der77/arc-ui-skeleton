@@ -126,6 +126,9 @@ type SidebarContextProps = {
   setIsResizingSidebar: (value: boolean) => void
   /** Whether the narrow downloads rail to the left of the sidebar is open (desktop). */
   downloadsRailOpen: boolean
+  downloadArrivalPeek: boolean
+  dismissDownloadArrival: () => void
+  claimDownloadArrival: (id: string) => boolean
   setDownloadsRailOpen: (open: boolean) => void
   toggleDownloadsRail: () => void
   /** Horizontal offset the sidebar chrome must shift by to sit right of the narrow rail. */
@@ -155,6 +158,7 @@ function SidebarProvider({
   open: openProp,
   onOpenChange: setOpenProp,
   sidebarWidthDefaultPx = SIDEBAR_WIDTH_DEFAULT_PX,
+  downloadArrivalId,
   className,
   style,
   children,
@@ -165,11 +169,12 @@ function SidebarProvider({
   onOpenChange?: (open: boolean) => void
   /** Initial desktop sidebar width in px when nothing is stored in localStorage. */
   sidebarWidthDefaultPx?: number
+  downloadArrivalId?: string
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
   const [dockFromPeek, setDockFromPeek] = React.useState(false)
-  const [peekPanelOpen, setPeekPanelOpen] = React.useState(false)
+  const [hoverPeekPanelOpen, setPeekPanelOpen] = React.useState(false)
   const peekCloseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const layoutAnimCountRef = React.useRef(0)
   const [layoutAnimating, setLayoutAnimating] = React.useState(false)
@@ -178,6 +183,22 @@ function SidebarProvider({
   )
   const [isResizingSidebar, setIsResizingSidebar] = React.useState(false)
   const [downloadsRailOpen, setDownloadsRailOpen] = React.useState(false)
+  const [expiredDownloadArrival, setExpiredDownloadArrival] = React.useState<string>()
+  const lastPlayedDownloadArrival = React.useRef<string>(undefined)
+  const claimDownloadArrival = React.useCallback((id: string) => {
+    if (lastPlayedDownloadArrival.current === id) return false
+    lastPlayedDownloadArrival.current = id
+    return true
+  }, [])
+  const downloadArrivalPeek = !!downloadArrivalId && downloadArrivalId !== expiredDownloadArrival
+  const dismissDownloadArrival = React.useCallback(() => {
+    setExpiredDownloadArrival(downloadArrivalId)
+  }, [downloadArrivalId])
+  React.useEffect(() => {
+    if (!downloadArrivalId) return
+    const timer = window.setTimeout(() => setExpiredDownloadArrival(downloadArrivalId), 3000)
+    return () => window.clearTimeout(timer)
+  }, [downloadArrivalId])
   const railPendingRef = React.useRef(false)
 
   const widthHydratedRef = React.useRef(false)
@@ -232,6 +253,8 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+  // Arrival previews share the existing offcanvas peek without changing docking.
+  const peekPanelOpen = hoverPeekPanelOpen || (downloadArrivalPeek && !open && !isMobile && !downloadsRailOpen)
   const dockProgress = useMotionValue(open ? 1 : 0)
   const sidebarVisibility = useMotionValue(open ? 1 : 0)
   const reduceMotion = useReducedMotion()
@@ -317,6 +340,11 @@ function SidebarProvider({
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
+      if (downloadArrivalPeek) {
+        dismissDownloadArrival()
+        setOpenMobile(false)
+        return
+      }
       setOpenMobile((o) => !o)
       return
     }
@@ -325,7 +353,7 @@ function SidebarProvider({
       setDockFromPeek(peekPanelOpen)
     }
     setOpen((o) => !o)
-  }, [isMobile, open, peekPanelOpen, setOpen, setOpenMobile, cancelPeekClose])
+  }, [isMobile, open, downloadArrivalPeek, dismissDownloadArrival, peekPanelOpen, setOpen, setOpenMobile, cancelPeekClose])
 
   /**
    * Toggling the rail from an undocked sidebar docks first, then opens the rail once the
@@ -398,6 +426,9 @@ function SidebarProvider({
       isResizingSidebar,
       setIsResizingSidebar,
       downloadsRailOpen,
+      downloadArrivalPeek,
+      dismissDownloadArrival,
+      claimDownloadArrival,
       setDownloadsRailOpen,
       toggleDownloadsRail,
       leftRailWidthPx,
@@ -422,6 +453,9 @@ function SidebarProvider({
       sidebarWidthPx,
       isResizingSidebar,
       downloadsRailOpen,
+      downloadArrivalPeek,
+      dismissDownloadArrival,
+      claimDownloadArrival,
       toggleDownloadsRail,
       leftRailWidthPx,
     ]
@@ -468,6 +502,8 @@ function Sidebar({
     state,
     openMobile,
     setOpenMobile,
+    downloadArrivalPeek,
+    dismissDownloadArrival,
     open,
     dockProgress,
     sidebarVisibility,
@@ -555,7 +591,10 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet open={openMobile || downloadArrivalPeek} onOpenChange={(nextOpen) => {
+        if (!nextOpen) dismissDownloadArrival()
+        setOpenMobile(nextOpen)
+      }} {...props}>
         <SheetContent
           dir={dir}
           data-sidebar="sidebar"

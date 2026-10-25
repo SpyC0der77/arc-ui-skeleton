@@ -41,7 +41,7 @@ function DownloadMenuItem({
         type="button"
         role="menuitem"
         className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-black/6 focus-visible:bg-black/6"
-        onPointerDown={playNudgeOnPress(iconRef)}
+        onPointerDown={(event) => playNudgeOnPress(iconRef)(event)}
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-black/6 text-black/60">
           <NudgeIcon ref={iconRef} preset={nudge}>
@@ -67,12 +67,23 @@ function DownloadMenuItem({
   );
 }
 
-export function SidebarDownloadsButton({ className }: { className?: string }) {
-  const [isOpen, setIsOpen] = React.useState(false);
+export function SidebarDownloadsButton({
+  className,
+  arrivalId,
+}: {
+  className?: string;
+  arrivalId?: string;
+}) {
+  const [interactionOpen, setInteractionOpen] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
+  const pointerInside = React.useRef(false);
+  const focusInside = React.useRef(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const giftRef = React.useRef<NudgeIconHandle>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   const reduceMotion = useReducedMotion();
-  const { downloadsRailOpen, toggleDownloadsRail } = useSidebar();
+  const { downloadsRailOpen, toggleDownloadsRail, downloadArrivalPeek, dismissDownloadArrival, claimDownloadArrival, isMobile, setOpenMobile } = useSidebar();
+  const isOpen = !downloadsRailOpen && (interactionOpen || downloadArrivalPeek);
 
   const cancelClose = React.useCallback(() => {
     if (closeTimerRef.current == null) return;
@@ -84,22 +95,57 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
   const open = React.useCallback(() => {
     if (downloadsRailOpen) return;
     cancelClose();
-    setIsOpen(true);
+    setInteractionOpen(true);
   }, [cancelClose, downloadsRailOpen]);
 
   const scheduleClose = React.useCallback(() => {
     cancelClose();
     closeTimerRef.current = window.setTimeout(() => {
-      setIsOpen(false);
+      if (!pointerInside.current && !focusInside.current) setInteractionOpen(false);
       closeTimerRef.current = null;
     }, CLOSE_DELAY_MS);
   }, [cancelClose]);
 
   React.useEffect(() => cancelClose, [cancelClose]);
 
+  React.useEffect(() => {
+    if (!arrivalId || !downloadArrivalPeek || !claimDownloadArrival(arrivalId)) return;
+    if (!reduceMotion) giftRef.current?.play();
+    buttonRef.current?.animate([
+      { backgroundColor: "rgba(68,55,80,0)" },
+      { backgroundColor: "rgba(68,55,80,0.14)" },
+      { backgroundColor: "rgba(68,55,80,0)" },
+    ], { duration: 360, easing: "ease-out" });
+  }, [arrivalId, downloadArrivalPeek, reduceMotion, claimDownloadArrival]);
+
+  function pointerEnter() {
+    pointerInside.current = true;
+    if (isMobile) setOpenMobile(true);
+    open();
+  }
+
+  function pointerLeave() {
+    pointerInside.current = false;
+    scheduleClose();
+  }
+
+  function focusEnter(event: React.FocusEvent) {
+    if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
+    focusInside.current = true;
+    if (isMobile) setOpenMobile(true);
+    open();
+  }
+
+  function focusLeave(event: React.FocusEvent) {
+    if (event.relatedTarget instanceof Node && containerRef.current?.contains(event.relatedTarget)) return;
+    focusInside.current = false;
+    scheduleClose();
+  }
+
   function handleClick() {
     cancelClose();
-    setIsOpen(false);
+    setInteractionOpen(false);
+    dismissDownloadArrival();
     toggleDownloadsRail();
   }
 
@@ -113,8 +159,11 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
     : { duration: 0.14, ease: "linear" as const, delay: 0.06 };
 
   return (
-    <div className={cn("relative w-full", className)}>
+    <div ref={containerRef} className={cn("relative w-full", className)}>
       <Button
+        ref={buttonRef}
+        data-download-target="true"
+        data-download-arrival={arrivalId}
         type="button"
         variant="ghost"
         size="icon"
@@ -122,11 +171,11 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
         aria-expanded={isOpen}
         aria-pressed={downloadsRailOpen}
         className="size-8 rounded-md text-black/60 hover:bg-black/10 hover:text-black aria-expanded:bg-black/10 aria-expanded:text-black aria-pressed:bg-black/10 aria-pressed:text-black"
-        onPointerEnter={open}
-        onPointerLeave={scheduleClose}
-        onFocus={open}
-        onBlur={scheduleClose}
-        onPointerDown={playNudgeOnPress(giftRef)}
+        onPointerEnter={pointerEnter}
+        onPointerLeave={pointerLeave}
+        onFocus={focusEnter}
+        onBlur={focusLeave}
+        onPointerDown={(event) => playNudgeOnPress(giftRef)(event)}
         onClick={handleClick}
       >
         <NudgeIcon ref={giftRef} preset="gift">
@@ -145,10 +194,10 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
             animate={{ opacity: 1, y: 0, scaleX: 1, scaleY: 1 }}
             exit={{ opacity: 0, y: 8, scaleX: 0.35, scaleY: 0.15 }}
             transition={transition}
-            onPointerEnter={open}
-            onPointerLeave={scheduleClose}
-            onFocusCapture={open}
-            onBlurCapture={scheduleClose}
+            onPointerEnter={pointerEnter}
+            onPointerLeave={pointerLeave}
+            onFocusCapture={focusEnter}
+            onBlurCapture={focusLeave}
           >
             <motion.div
               initial={{ opacity: 0 }}

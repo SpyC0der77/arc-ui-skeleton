@@ -24,7 +24,7 @@ const iconButtonClass =
 const repoUrl = "https://github.com/SpyC0der77/arc-ui-skeleton";
 const displayUrl = "arc-ui-skeleton.vercel.app";
 
-export function ArcSidebarPanelContent() {
+export function ArcSidebarPanelContent({ downloadArrivalId }: { downloadArrivalId?: string }) {
   const { layoutAnimating, dockFromPeek } = useSidebar();
   const { openUrlCommand } = useArcUrlCommand();
   const freezeChrome = layoutAnimating || dockFromPeek;
@@ -52,7 +52,7 @@ export function ArcSidebarPanelContent() {
             size="icon"
             className={cn(iconButtonClass, motionSafe)}
             aria-label="Back"
-            onPointerDown={playNudgeOnPress(backRef)}
+            onPointerDown={(event) => playNudgeOnPress(backRef)(event)}
           >
             <NudgeIcon ref={backRef} preset="back" disabled={freezeChrome}>
               <ArrowLeft className="size-[18px]" />
@@ -63,7 +63,7 @@ export function ArcSidebarPanelContent() {
             size="icon"
             className={cn(iconButtonClass, motionSafe)}
             aria-label="Forward"
-            onPointerDown={playNudgeOnPress(forwardRef)}
+            onPointerDown={(event) => playNudgeOnPress(forwardRef)(event)}
           >
             <NudgeIcon ref={forwardRef} preset="forward" disabled={freezeChrome}>
               <ArrowRight className="size-[18px]" />
@@ -74,7 +74,7 @@ export function ArcSidebarPanelContent() {
             size="icon"
             className={cn(iconButtonClass, motionSafe)}
             aria-label="Reload"
-            onPointerDown={playNudgeOnPress(reloadRef)}
+            onPointerDown={(event) => playNudgeOnPress(reloadRef)(event)}
           >
             <NudgeIcon ref={reloadRef} preset="reload" disabled={freezeChrome}>
               <RotateCcw className="size-[18px]" />
@@ -92,7 +92,7 @@ export function ArcSidebarPanelContent() {
           motionSafe,
         )}
         onClick={openUrlCommand}
-        onPointerDown={playNudgeOnPress(lockRef)}
+        onPointerDown={(event) => playNudgeOnPress(lockRef)(event)}
         aria-label="Open address bar"
       >
         <NudgeIcon ref={lockRef} preset="lock" disabled={freezeChrome}>
@@ -109,7 +109,7 @@ export function ArcSidebarPanelContent() {
           motionSafe,
         )}
         onClick={openUrlCommand}
-        onPointerDown={playNudgeOnPress(plusRef)}
+        onPointerDown={(event) => playNudgeOnPress(plusRef)(event)}
         aria-label="New tab"
       >
         <NudgeIcon ref={plusRef} preset="plus" disabled={freezeChrome}>
@@ -126,7 +126,7 @@ export function ArcSidebarPanelContent() {
             "h-11 w-full justify-start gap-1.5 rounded-xl border border-black/10 bg-white px-3.5 text-base font-medium text-black/70 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_1px_3px_rgba(0,0,0,0.12)] hover:bg-white",
             motionSafe,
           )}
-          onPointerDown={playNudgeOnPress(shapesRef)}
+          onPointerDown={(event) => playNudgeOnPress(shapesRef)(event)}
         >
           <NudgeIcon ref={shapesRef} preset="shapes" disabled={freezeChrome}>
             <Shapes className="size-[18px] text-black/80" />
@@ -142,7 +142,7 @@ export function ArcSidebarPanelContent() {
             "h-11 w-full justify-start gap-1.5 rounded-xl border-none bg-[#CEC7D4] px-3.5 text-base font-medium text-black/50 shadow-none hover:bg-[#e3dfea] hover:no-underline",
             motionSafe,
           )}
-          onPointerDown={playNudgeOnPress(githubRef)}
+          onPointerDown={(event) => playNudgeOnPress(githubRef)(event)}
         >
           <NudgeIcon ref={githubRef} preset="github" disabled={freezeChrome}>
             <Github className="size-[18px] text-black/60" aria-hidden />
@@ -152,7 +152,7 @@ export function ArcSidebarPanelContent() {
       </div>
 
       <div className="mt-auto flex items-center">
-        <SidebarDownloadsButton />
+        <SidebarDownloadsButton arrivalId={downloadArrivalId} />
       </div>
     </>
   );
