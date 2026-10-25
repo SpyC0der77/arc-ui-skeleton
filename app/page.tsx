@@ -1,3 +1,7 @@
+"use client"
+
+import { useState } from "react"
+import { DownloadDemo } from "@/components/download-demo"
 import { ArcUrlCommandProvider } from "@/components/arc-url-command-menu"
 import {
   ArcSidebarPanelContent,
@@ -12,6 +16,7 @@ import {
 import { HomePageFrame } from "@/components/home-page-frame"
 
 export default function Home() {
+  const [downloadArrivalId, setDownloadArrivalId] = useState<string>()
   return (
     <SidebarProvider>
       <ArcUrlCommandProvider>
@@ -24,14 +29,16 @@ export default function Home() {
           >
             <SidebarRail />
             <SidebarContent className="gap-7 py-4 pl-3 pr-1.5">
-              <ArcSidebarPanelContent />
+              <ArcSidebarPanelContent downloadArrivalId={downloadArrivalId} />
             </SidebarContent>
           </Sidebar>
 
           <SidebarInset
             className="bg-transparent"
           >
-            <HomePageFrame />
+            <HomePageFrame>
+              <DownloadDemo onArrival={setDownloadArrivalId} />
+            </HomePageFrame>
           </SidebarInset>
 
           <SidebarHoverPeek />

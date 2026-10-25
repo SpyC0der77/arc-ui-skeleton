@@ -24,7 +24,7 @@ const iconButtonClass =
 const repoUrl = "https://github.com/SpyC0der77/arc-ui-skeleton";
 const displayUrl = "arc-ui-skeleton.vercel.app";
 
-export function ArcSidebarPanelContent() {
+export function ArcSidebarPanelContent({ downloadArrivalId }: { downloadArrivalId?: string }) {
   const { layoutAnimating, dockFromPeek } = useSidebar();
   const { openUrlCommand } = useArcUrlCommand();
   const freezeChrome = layoutAnimating || dockFromPeek;
@@ -152,7 +152,7 @@ export function ArcSidebarPanelContent() {
       </div>
 
       <div className="mt-auto flex items-center">
-        <SidebarDownloadsButton />
+        <SidebarDownloadsButton arrivalId={downloadArrivalId} />
       </div>
     </>
   );

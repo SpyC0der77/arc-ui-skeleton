@@ -24,6 +24,7 @@ An Arc-inspired browser interface built as a Next.js web app, with a collapsible
 - Open the URL command menu to enter an address or search query.
 - Collapse the sidebar and reveal it through a hover peek.
 - Explore the sidebar, downloads rail, and page frame components.
+- Click Download on the main page to preview the file animation into the sidebar gift. This does not download a file.
 
 ## Run locally
 

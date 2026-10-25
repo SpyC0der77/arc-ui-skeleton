@@ -16,6 +16,7 @@ import {
 import { useSidebar } from "./sidebar";
 
 const CLOSE_DELAY_MS = 160;
+const ARRIVAL_PEEK_MS = 3000;
 
 /** Horizontal center of the trigger button, so the panel grows out of the icon. */
 const DROPUP_ORIGIN_X_PX = 16;
@@ -67,12 +68,26 @@ function DownloadMenuItem({
   );
 }
 
-export function SidebarDownloadsButton({ className }: { className?: string }) {
-  const [isOpen, setIsOpen] = React.useState(false);
+export function SidebarDownloadsButton({
+  className,
+  arrivalId,
+}: {
+  className?: string;
+  arrivalId?: string;
+}) {
+  const [interactionOpen, setInteractionOpen] = React.useState(false);
+  const [expiredArrival, setExpiredArrival] = React.useState<string | undefined>(undefined);
   const closeTimerRef = React.useRef<number | null>(null);
+  const pointerInside = React.useRef(false);
+  const focusInside = React.useRef(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const giftRef = React.useRef<NudgeIconHandle>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const lastArrival = React.useRef<string | undefined>(undefined);
   const reduceMotion = useReducedMotion();
   const { downloadsRailOpen, toggleDownloadsRail } = useSidebar();
+  const arrivalPeek = !!arrivalId && arrivalId !== expiredArrival;
+  const isOpen = !downloadsRailOpen && (interactionOpen || arrivalPeek);
 
   const cancelClose = React.useCallback(() => {
     if (closeTimerRef.current == null) return;
@@ -84,22 +99,62 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
   const open = React.useCallback(() => {
     if (downloadsRailOpen) return;
     cancelClose();
-    setIsOpen(true);
+    setInteractionOpen(true);
   }, [cancelClose, downloadsRailOpen]);
 
   const scheduleClose = React.useCallback(() => {
     cancelClose();
     closeTimerRef.current = window.setTimeout(() => {
-      setIsOpen(false);
+      if (!pointerInside.current && !focusInside.current) setInteractionOpen(false);
       closeTimerRef.current = null;
     }, CLOSE_DELAY_MS);
   }, [cancelClose]);
 
   React.useEffect(() => cancelClose, [cancelClose]);
 
+  React.useEffect(() => {
+    if (!arrivalId) return;
+    const timer = window.setTimeout(() => setExpiredArrival(arrivalId), ARRIVAL_PEEK_MS);
+    return () => clearTimeout(timer);
+  }, [arrivalId]);
+
+  React.useEffect(() => {
+    if (!arrivalId || lastArrival.current === arrivalId) return;
+    lastArrival.current = arrivalId;
+    if (!reduceMotion) giftRef.current?.play();
+    const feedback = buttonRef.current?.animate([
+      { backgroundColor: "rgba(68,55,80,0)" },
+      { backgroundColor: "rgba(68,55,80,0.14)" },
+      { backgroundColor: "rgba(68,55,80,0)" },
+    ], { duration: 360, easing: "ease-out" });
+    return () => feedback?.cancel();
+  }, [arrivalId, reduceMotion]);
+
+  function pointerEnter() {
+    pointerInside.current = true;
+    open();
+  }
+
+  function pointerLeave() {
+    pointerInside.current = false;
+    scheduleClose();
+  }
+
+  function focusEnter() {
+    focusInside.current = true;
+    open();
+  }
+
+  function focusLeave(event: React.FocusEvent) {
+    if (event.relatedTarget instanceof Node && containerRef.current?.contains(event.relatedTarget)) return;
+    focusInside.current = false;
+    scheduleClose();
+  }
+
   function handleClick() {
     cancelClose();
-    setIsOpen(false);
+    setInteractionOpen(false);
+    setExpiredArrival(arrivalId);
     toggleDownloadsRail();
   }
 
@@ -113,8 +168,11 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
     : { duration: 0.14, ease: "linear" as const, delay: 0.06 };
 
   return (
-    <div className={cn("relative w-full", className)}>
+    <div ref={containerRef} className={cn("relative w-full", className)}>
       <Button
+        ref={buttonRef}
+        data-download-target="true"
+        data-download-arrival={arrivalId}
         type="button"
         variant="ghost"
         size="icon"
@@ -122,10 +180,10 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
         aria-expanded={isOpen}
         aria-pressed={downloadsRailOpen}
         className="size-8 rounded-md text-black/60 hover:bg-black/10 hover:text-black aria-expanded:bg-black/10 aria-expanded:text-black aria-pressed:bg-black/10 aria-pressed:text-black"
-        onPointerEnter={open}
-        onPointerLeave={scheduleClose}
-        onFocus={open}
-        onBlur={scheduleClose}
+        onPointerEnter={pointerEnter}
+        onPointerLeave={pointerLeave}
+        onFocus={focusEnter}
+        onBlur={focusLeave}
         onPointerDown={playNudgeOnPress(giftRef)}
         onClick={handleClick}
       >
@@ -145,10 +203,10 @@ export function SidebarDownloadsButton({ className }: { className?: string }) {
             animate={{ opacity: 1, y: 0, scaleX: 1, scaleY: 1 }}
             exit={{ opacity: 0, y: 8, scaleX: 0.35, scaleY: 0.15 }}
             transition={transition}
-            onPointerEnter={open}
-            onPointerLeave={scheduleClose}
-            onFocusCapture={open}
-            onBlurCapture={scheduleClose}
+            onPointerEnter={pointerEnter}
+            onPointerLeave={pointerLeave}
+            onFocusCapture={focusEnter}
+            onBlurCapture={focusLeave}
           >
             <motion.div
               initial={{ opacity: 0 }}
