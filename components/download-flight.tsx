@@ -14,7 +14,7 @@ export function FileFlight({ flight, onLand }: { flight: Flight; onLand: (id: st
   const path = React.useMemo(() => {
     const { origin: a, target: b } = flight
     const lift = Math.min(240, Math.max(130, Math.abs(b.x - a.x) * .28))
-    const apex = Math.max(24, Math.min(a.y, b.y) - lift)
+    const apex = Math.min(Math.min(a.y, b.y) - 1, Math.max(24, Math.min(a.y, b.y) - lift))
     // Solve a ballistic arc through both endpoints with an upward launch.
     // Horizontal velocity stays constant; gravity accelerates the descent.
     const rise = Math.sqrt(Math.max(0, a.y - apex))
@@ -31,7 +31,7 @@ export function FileFlight({ flight, onLand }: { flight: Flight; onLand: (id: st
   }, [flight])
 
   return <>
-    {flight.showGift && <motion.div className="fallback-gift" style={{ position: "absolute", width: 20, height: 20, color: "#65556f", left: flight.target.x - 10, top: flight.target.y - 10 }} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 1, 0], y: [0, 0, -3, 0] }} transition={{ opacity: { duration: 1.84, times: [0, .08, .92, 1] }, y: { duration: 1.84, times: [0, .85, .91, 1] } }}><Gift size={20} strokeWidth={1.8} /></motion.div>}
+    {flight.showGift && <motion.div className="fallback-gift" style={{ position: "absolute", width: 20, height: 20, color: "#65556f", left: flight.target.x - 10, top: flight.target.y - 10 }} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 1, 0], y: [0, 0, -3, 0] }} transition={{ opacity: { duration, times: [0, .08, .92, 1] }, y: { duration, times: [0, .85, .91, 1] } }}><Gift size={20} strokeWidth={1.8} /></motion.div>}
     <motion.div className="file-flight" style={{ position: "absolute", left: 0, top: 0, width: 36, height: 44, display: "grid", placeItems: "center", color: "#65556f", filter: "drop-shadow(0 2px 3px #44375030)", willChange: "transform, opacity" }} data-flight-id={flight.id} data-target-x={flight.target.x} data-target-y={flight.target.y}
       initial={{ x: flight.origin.x - 18, y: flight.origin.y - 22, opacity: 0, scale: 1, rotate: -8 }}
       animate={reduceMotion ? { opacity: 0 } : {

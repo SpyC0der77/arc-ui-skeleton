@@ -110,7 +110,7 @@ export function SidebarDownloadsButton({
   React.useEffect(() => cancelClose, [cancelClose]);
 
   React.useEffect(() => {
-    if (!arrivalId || lastArrival.current === arrivalId) return;
+    if (!arrivalId || !downloadArrivalPeek || lastArrival.current === arrivalId) return;
     lastArrival.current = arrivalId;
     if (!reduceMotion) giftRef.current?.play();
     const feedback = buttonRef.current?.animate([
@@ -119,7 +119,7 @@ export function SidebarDownloadsButton({
       { backgroundColor: "rgba(68,55,80,0)" },
     ], { duration: 360, easing: "ease-out" });
     return () => feedback?.cancel();
-  }, [arrivalId, reduceMotion]);
+  }, [arrivalId, downloadArrivalPeek, reduceMotion]);
 
   function pointerEnter() {
     pointerInside.current = true;
@@ -131,7 +131,8 @@ export function SidebarDownloadsButton({
     scheduleClose();
   }
 
-  function focusEnter() {
+  function focusEnter(event: React.FocusEvent) {
+    if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
     focusInside.current = true;
     open();
   }

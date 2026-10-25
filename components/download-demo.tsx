@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Download } from "lucide-react";
 import { useReducedMotion } from "motion/react";
@@ -12,7 +12,13 @@ export function DownloadDemo({ onArrival }: { onArrival: (id: string) => void })
   const [flight, setFlight] = useState<Flight | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const active = useRef(false);
+  const nextArrival = useRef(0);
+  const announcementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => () => {
+    if (announcementTimer.current !== null) clearTimeout(announcementTimer.current);
+  }, []);
 
   function launch(event: MouseEvent<HTMLButtonElement>) {
     if (active.current) return;
@@ -23,11 +29,14 @@ export function DownloadDemo({ onArrival }: { onArrival: (id: string) => void })
     const y = rect ? rect.y + rect.height / 2 : -1;
     const hit = document.elementFromPoint(x, y);
     const visible = !!gift && !!hit && gift.contains(hit);
-    const id = crypto.randomUUID();
+    const id = String(++nextArrival.current);
+    if (announcementTimer.current !== null) clearTimeout(announcementTimer.current);
     setAnnouncement("");
     if (reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       onArrival(id);
-      setAnnouncement("Animation preview complete. No file was downloaded.");
+      announcementTimer.current = setTimeout(() => {
+        setAnnouncement("Animation preview complete. No file was downloaded.");
+      }, 50);
       return;
     }
     active.current = true;
@@ -54,7 +63,7 @@ export function DownloadDemo({ onArrival }: { onArrival: (id: string) => void })
     <>
       <div className="flex min-h-64 flex-1 items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
-          <Button type="button" onClick={launch} disabled={!!flight}
+          <Button type="button" onClick={launch} aria-disabled={!!flight}
             aria-describedby="download-demo-description"
             className="h-9 gap-2 rounded-lg bg-[#65556f] px-4 text-white hover:bg-[#54455d] focus-visible:ring-[#65556f]/40">
             <Download aria-hidden="true" className="size-4" />
